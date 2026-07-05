@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.12</title>
+<title>Áurea · v0.12.1</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -384,7 +384,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.12</div>
+<div class="ver" id="ver">ÁUREA · V0.12.1</div>
 
 <script>
 'use strict';
@@ -1200,28 +1200,29 @@ const Snd=(()=>{
     warn(u){ // u: urgencia 0..1 (sube el tono en los últimos avisos)
       if(muted)return;
       const c=ac();
+      Music.duck(430);
       if(warnBuf){
         const s=c.createBufferSource(),g=c.createGain();
         s.buffer=warnBuf;s.playbackRate.value=1+u*.08;
-        g.gain.value=.55;
+        g.gain.value=1.0;
         s.connect(g).connect(c.destination);s.start();
         return;
       }
       // campanilla con eco: dos parciales inarmónicos + retardo con retroalimentación
       const t=c.currentTime;
-      const master=c.createGain();master.gain.value=.15;
+      const master=c.createGain();master.gain.value=.5+u*.12;
       master.connect(c.destination);
       const dly=c.createDelay(1);dly.delayTime.value=.19;
       const fb=c.createGain();fb.gain.value=.34;
-      const wet=c.createGain();wet.gain.value=.5;
+      const wet=c.createGain();wet.gain.value=.6;
       dly.connect(fb);fb.connect(dly);
       master.connect(dly);dly.connect(wet);wet.connect(c.destination);
       const f=1175+u*160;
       [[f,1],[f*2.76,.32]].forEach(([fr,g0])=>{
         const o=c.createOscillator(),og=c.createGain();
         o.type='sine';o.frequency.value=fr;
-        og.gain.setValueAtTime(g0*.15,t);
-        og.gain.exponentialRampToValueAtTime(.0008,t+.5);
+        og.gain.setValueAtTime(g0*.55,t);
+        og.gain.exponentialRampToValueAtTime(.0008,t+.55);
         o.connect(og).connect(master);o.start(t);o.stop(t+.55);
       });
     }
@@ -1239,6 +1240,13 @@ const Music=(()=>{
     gi=1-i;game[gi].currentTime=0;game[gi].play().catch(()=>{});
   }));
   function stopAll(){menu.pause();game.forEach(a=>a.pause());}
+  let duckT=null;
+  function duck(ms){
+    const all=[menu,game[0],game[1]];
+    all.forEach(a=>{if(a._bv===undefined)a._bv=a.volume;a.volume=a._bv*.22;});
+    clearTimeout(duckT);
+    duckT=setTimeout(()=>{all.forEach(a=>{if(a._bv!==undefined)a.volume=a._bv;});},ms||420);
+  }
   function play(){
     if(Snd.muted)return;
     if(mode==='menu'){menu.play().catch(()=>{});}
@@ -1252,7 +1260,8 @@ const Music=(()=>{
       if(m==='menu')menu.currentTime=0;
       play();
     },
-    refresh(){if(Snd.muted)stopAll();else play();}
+    refresh(){if(Snd.muted)stopAll();else play();},
+    duck
   };
 })();
 // arranque tras el primer gesto (política de autoplay del navegador)
