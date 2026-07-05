@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.11.1</title>
+<title>Áurea · v0.12</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -384,7 +384,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.11.1</div>
+<div class="ver" id="ver">ÁUREA · V0.12</div>
 
 <script>
 'use strict';
@@ -1156,7 +1156,7 @@ function wrapPanel(t){
 
 /* ================= AUDIO (WebAudio, sin assets) ================= */
 const Snd=(()=>{
-  let ctx=null,muted=false,tickBuf=null,lastTick=0;
+  let ctx=null,muted=false,tickBuf=null,warnBuf=null,lastTick=0;
   try{muted=localStorage.getItem('aurea_sound')==='off';}catch(e){}
   function ac(){if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();return ctx;}
   // click real de trinquete (extraído del giro de ruleta); fallback sintético
@@ -1164,6 +1164,11 @@ const Snd=(()=>{
     if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();
     return ctx.decodeAudioData(b);
   }).then(buf=>{tickBuf=buf;}).catch(()=>{});
+  // aviso de tiempo opcional: si existe warn.wav en la raíz, se usa en vez del sintético
+  fetch('warn.wav').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();}).then(b=>{
+    if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();
+    return ctx.decodeAudioData(b);
+  }).then(buf=>{warnBuf=buf;}).catch(()=>{});
   function tone(f,dur,type='sine',vol=.14,when=0){
     if(muted)return;const c=ac();const t=c.currentTime+when;
     const o=c.createOscillator(),g=c.createGain();
@@ -1191,7 +1196,35 @@ const Snd=(()=>{
     buzz(){tone(140,.4,'sawtooth',.12);},
     quiebra(){tone(220,.3,'sawtooth',.12);tone(155,.4,'sawtooth',.12,.18);tone(98,.6,'sawtooth',.13,.38);},
     win(){[523,659,784,1047].forEach((f,i)=>tone(f,.4,'triangle',.12,i*.12));},
-    key(){tone(700,.04,'square',.05);}
+    key(){tone(700,.04,'square',.05);},
+    warn(u){ // u: urgencia 0..1 (sube el tono en los últimos avisos)
+      if(muted)return;
+      const c=ac();
+      if(warnBuf){
+        const s=c.createBufferSource(),g=c.createGain();
+        s.buffer=warnBuf;s.playbackRate.value=1+u*.08;
+        g.gain.value=.55;
+        s.connect(g).connect(c.destination);s.start();
+        return;
+      }
+      // campanilla con eco: dos parciales inarmónicos + retardo con retroalimentación
+      const t=c.currentTime;
+      const master=c.createGain();master.gain.value=.15;
+      master.connect(c.destination);
+      const dly=c.createDelay(1);dly.delayTime.value=.19;
+      const fb=c.createGain();fb.gain.value=.34;
+      const wet=c.createGain();wet.gain.value=.5;
+      dly.connect(fb);fb.connect(dly);
+      master.connect(dly);dly.connect(wet);wet.connect(c.destination);
+      const f=1175+u*160;
+      [[f,1],[f*2.76,.32]].forEach(([fr,g0])=>{
+        const o=c.createOscillator(),og=c.createGain();
+        o.type='sine';o.frequency.value=fr;
+        og.gain.setValueAtTime(g0*.15,t);
+        og.gain.exponentialRampToValueAtTime(.0008,t+.5);
+        o.connect(og).connect(master);o.start(t);o.stop(t+.55);
+      });
+    }
   };
 })();
 
@@ -1499,10 +1532,10 @@ function setActions(on){
 
 /* ================= SORTEO Y RELOJ DE TURNO ================= */
 const TIMER_MS=30000;
-const Turno={raf:null,t0:0,idx:-1,on:false};
+const Turno={raf:null,t0:0,idx:-1,on:false,lastBeep:99};
 function timerReset(idx){
   timerStop();
-  Turno.idx=idx;Turno.t0=performance.now();Turno.on=true;
+  Turno.idx=idx;Turno.t0=performance.now();Turno.on=true;Turno.lastBeep=99;
   timerLoop();
 }
 function timerStop(){
@@ -1519,6 +1552,8 @@ function timerLoop(){
     const disc=chip.querySelector('.c-timer');
     if(disc)disc.style.background=`conic-gradient(var(--bad) ${(p*360).toFixed(1)}deg, var(--amber) 0deg)`;
   }
+  const sec=Math.ceil((TIMER_MS-(performance.now()-Turno.t0))/1000);
+  if(sec<=5&&sec>=1&&sec<Turno.lastBeep){Turno.lastBeep=sec;Snd.warn((5-sec)/4);}
   if(p>=1){timerStop();onTurnTimeout();return;}
   Turno.raf=requestAnimationFrame(timerLoop);
 }
