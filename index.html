@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.7</title>
+<title>Áurea · v0.8</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -25,7 +25,7 @@
   --bg:#0b0b0c; --panel:#141416; --panel-2:#1b1b1f; --line:#2c2c30;
   --text:#f4f4f2; --muted:#76767c; --accent:#f4f4f2; --amber:#d4a017;
   --vignette:rgba(0,0,0,0.5); --on-accent:#0b0b0c; --bad:#e06363;
-  --tile-hid:#232329; --tile-line:#3f3f48; --tile-rev:#f0eee6; --tile-rev-text:#141414;
+  --tile-hid:#32323b; --tile-line:#52525e; --tile-rev:#f0eee6; --tile-rev-text:#141414;
   --wheel-a:#1c1c20; --wheel-b:#2a2a30; --wheel-line:#3c3c44;
 }
 body.light, html.pre-light body{
@@ -366,12 +366,12 @@ html.pre-light #app-splash{background:#f3f2ee}
     <p><b>Pulsa el medallón</b> (brilla cuando puedes) para girar la ruleta y elige una consonante. Si está en el panel, ganas su valor por cada aparición y sigues jugando.</p>
     <p><b>Vocal</b>: compra una por 250 €. Si no está en el panel, pierdes el turno.</p>
     <p><b>Resuelve</b> cuando creas saber la frase: rellena las letras ocultas una a una. Un fallo y pierdes el turno.</p>
-    <p>Cuidado con la <b>Quiebra</b>: pierdes todo el dinero de la ronda. Quien resuelve el panel se lleva su dinero a la <b>banca</b>. Tres rondas; gana la banca más alta.</p>
+    <p>Cuidado con la <b>Quiebra</b>: pierdes todo el dinero de la ronda. Casillas especiales: <b>×2</b> duplica tu dinero de ronda y sigues jugando; <b>Vocal gratis</b> te regala una vocal sin coste. Quien resuelve el panel se lleva su dinero a la <b>banca</b>. Tres rondas; gana la banca más alta.</p>
     <button class="btn" id="tut-close">Entendido</button>
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.7</div>
+<div class="ver" id="ver">ÁUREA · V0.8</div>
 
 <script>
 'use strict';
@@ -584,8 +584,8 @@ const LETRAS='ABCDEFGHIJKLMNÑOPQRSTUVWXYZ';
 const COSTE_VOCAL=250;
 const BANCA_MINIMA=200;
 const WEDGES=[
- {t:'QUIEBRA',v:-1},{v:150},{v:50},{v:400},{v:100},{t:'PIERDE',v:0},{v:200},{v:75},
- {v:600},{v:100},{v:250},{v:50},{v:350},{v:125},{v:300},{v:175}
+ {t:'QUIEBRA',v:-1},{v:150},{v:350},{t:'×2',v:-3},{v:100},{t:'PIERDE',v:0},{v:200},{v:75},
+ {v:600},{v:125},{t:'VOCAL GRATIS',v:-2},{v:50},{v:400},{v:175},{v:300},{v:250}
 ];
 const FREC_CONS='SNRLDTCMPBGVQHFJZÑXYWK'; // frecuencia aprox. en español
 
@@ -748,6 +748,7 @@ function buildWheel(){
     let fill;
     if(w.v===-1)fill='#000000';
     else if(w.v===0)fill='var(--muted)';
+    else if(w.v===-2||w.v===-3)fill='var(--tile-rev)';
     else if(w.v>=400)fill='var(--amber)';
     else fill=(i%2)?'var(--wheel-a)':'var(--wheel-b)';
     const p=document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -756,23 +757,25 @@ function buildWheel(){
     p.setAttribute('stroke','var(--wheel-line)');
     p.setAttribute('stroke-width','1');
     g.appendChild(p);
-    // etiqueta
-    const mid=-90+(i+.5)*step;
+    // etiqueta — la rotación es el INCREMENTO desde arriba, no el ángulo absoluto
+    const delta=(i+.5)*step;
     const t=document.createElementNS('http://www.w3.org/2000/svg','text');
     t.setAttribute('class','wedge-lab');
-    let lab,fs,col;
-    if(w.v===-1){lab='QUIEBRA';fs=10.5;col='#f4f4f2';}
-    else if(w.v===0){lab='PIERDE';fs=10;col='var(--bg)';}
+    let lab,fs,col,vertical=false;
+    if(w.v===-1){lab='QUIEBRA';fs=10.5;col='#f4f4f2';vertical=true;}
+    else if(w.v===0){lab='PIERDE TURNO';fs=8;col='var(--bg)';vertical=true;}
+    else if(w.v===-2){lab='VOCAL GRATIS';fs=8;col='#8a6a10';vertical=true;}
+    else if(w.v===-3){lab='×2';fs=17;col='#8a6a10';}
     else{lab=String(w.v);fs=15;col=w.v>=400?'#0b0b0c':'var(--text)';}
     t.setAttribute('fill',col);
     t.setAttribute('font-size',fs);
-    if(w.t){ // texto vertical a lo largo del radio
-      t.setAttribute('transform',`rotate(${mid} ${cx} ${cy}) translate(${cx} ${cy-R+10}) rotate(90)`);
+    if(vertical){ // texto a lo largo del radio, leyendo hacia el centro
+      t.setAttribute('transform',`rotate(${delta} ${cx} ${cy}) translate(${cx} ${cy-R+10}) rotate(90)`);
       t.setAttribute('x',0);t.setAttribute('y',4);
       t.setAttribute('text-anchor','start');
-      t.setAttribute('letter-spacing','1.5');
+      t.setAttribute('letter-spacing','1.2');
     }else{
-      t.setAttribute('transform',`rotate(${mid} ${cx} ${cy})`);
+      t.setAttribute('transform',`rotate(${delta} ${cx} ${cy})`);
       t.setAttribute('x',cx);t.setAttribute('y',cy-R+30);
       t.setAttribute('text-anchor','middle');
     }
@@ -805,6 +808,13 @@ function flexPointer(){
   p.classList.remove('flex');void p.offsetWidth;p.classList.add('flex');
 }
 function wedgeAt(rot){const step=360/WEDGES.length;return Math.floor(((360-(rot%360))%360)/step);}
+function randomStop(){ // gajo aleatorio, parada en el 18-82% del gajo: el puntero nunca queda sobre un clavo
+  const step=360/WEDGES.length;
+  const w=Math.floor(Math.random()*WEDGES.length);
+  const frac=.18+Math.random()*.64;
+  const rot=((360-(w+frac)*step)%360+360)%360;
+  return {rot:Math.round(rot*100)/100,wedge:w};
+}
 function spinWheelTo(rotMod,turns){
   return new Promise(res=>{
     const from=((S.wheelRot%360)+360)%360;
@@ -826,9 +836,9 @@ function spinWheelTo(rotMod,turns){
   });
 }
 async function spinWheel(){
-  const rotMod=Math.random()*360;
-  await spinWheelTo(rotMod,3+Math.floor(Math.random()*3));
-  return WEDGES[wedgeAt(rotMod)];
+  const s=randomStop();
+  await spinWheelTo(s.rot,3+Math.floor(Math.random()*3));
+  return WEDGES[s.wedge];
 }
 
 /* ================= PANEL ================= */
@@ -1040,6 +1050,29 @@ async function resolveWedge(w,pi){
     if(p.cpu)return 'lose';
     nextTurn();return 'lose';
   }
+  if(w.v===-3){ // ×2: duplica el dinero de ronda y sigue jugando
+    const antes=p.m;
+    p.m*=2;
+    if(antes>0){Snd.coin();bumpChip(pi);}
+    msg(antes>0
+      ?(p.cpu?`¡×2! ${p.n} duplica su dinero: ${fmt(p.m)}.`:`¡×2! Duplicas tu dinero: ${fmt(p.m)}.`)
+      :'×2… con 0 € no hay milagro. Sigues jugando.','hot');
+    await sleep(1500);
+    if(!p.cpu){S.phase='idle';setActions(true);}
+    return 'again';
+  }
+  if(w.v===-2){ // vocal gratis
+    if(![...VOCALES].some(v=>!S.used.has(v))){
+      msg('Vocal gratis… pero no quedan vocales. Sigues jugando.','hot');
+      await sleep(1300);
+      if(!p.cpu){S.phase='idle';setActions(true);}
+      return 'again';
+    }
+    S.freeVowel=true;
+    msg(p.cpu?`¡${p.n} gana una vocal gratis!`:'¡Vocal gratis! Elige vocal: si acierta se revela, si no, pierdes el turno.','hot');
+    if(!p.cpu){S.phase='voc';showKB('voc');$('kb-title').textContent='VOCAL GRATIS';}
+    return 'freevoc';
+  }
   S.pend=w.v;
   if(!p.cpu){
     S.phase='cons';showKB('cons');
@@ -1086,15 +1119,16 @@ async function guessVowel(L,pi){
   S.phase='busy';hideKB();
   S.used.add(L);
   const p=S.players[pi];
-  p.m-=COSTE_VOCAL;bumpChip(pi);
+  const free=!!S.freeVowel;S.freeVowel=false;
+  if(!free){p.m-=COSTE_VOCAL;bumpChip(pi);}
   const n=countLetter(L);
   if(n===0){
     Snd.buzz();
-    if(!p.cpu){await loseTurn(`No hay ${L}. Pierdes ${fmt(COSTE_VOCAL)} y el turno.`);}
+    if(!p.cpu){await loseTurn(free?`No hay ${L}. Pierdes el turno.`:`No hay ${L}. Pierdes ${fmt(COSTE_VOCAL)} y el turno.`);}
     return 0;
   }
   S.revealed.add(L);
-  msg(`${n} × ${L}.`,'hot');
+  msg(free?`${n} × ${L} — vocal gratis.`:`${n} × ${L}.`,'hot');
   const t=revealLetter(L);
   await sleep(t+150);
   if(checkComplete(pi))return n;
@@ -1198,6 +1232,20 @@ async function cpuTurn(){
     const r=await resolveWedge(w,pi);
     if(gen!==S.gen)return;
     if(r==='lose'){await sleep(400);if(gen===S.gen)nextTurn();return;}
+    if(r==='again'){await sleep(400);continue;}
+    if(r==='freevoc'){
+      await sleep(900);
+      const vl=[...VOCALES].filter(v=>!S.used.has(v));
+      const left2=lettersLeft();
+      const dentro2=vl.filter(x=>left2.has(x));
+      const v=(dentro2.length&&Math.random()<p.skill)?pick(dentro2):pick(vl);
+      msg(`${p.n} elige la ${v} gratis…`);
+      await sleep(900);
+      const n=await guessVowel(v,pi);
+      if(gen!==S.gen||S.phase==='roundend')return;
+      if(n===0){await sleep(500);msg(`No hay ${v}. ${p.n} pierde el turno.`,'bad');await sleep(1200);if(gen===S.gen)nextTurn();return;}
+      await sleep(800);continue;
+    }
     // elegir consonante
     await sleep(800);
     let L;
@@ -1499,16 +1547,24 @@ async function animEvent(ev){
       Snd.buzz();msg(`${nm} pierde el turno.`,'bad');await sleep(1100);break;
     case 'skip':
       msg(`Turno saltado: ${nm} está desconectado.`,'bad');await sleep(900);break;
+    case 'x2':
+      Snd.coin();msg(`¡×2! ${nm} duplica su dinero (${fmt(ev.total||0)}).`,'hot');await sleep(1300);break;
+    case 'freevoc':
+      msg(`${nm} gana una vocal gratis…`,'hot');await sleep(600);break;
+    case 'freenone':
+      msg(`Vocal gratis para ${nm}… sin vocales restantes.`);await sleep(900);break;
     case 'cons':{
       msg(`${ev.n} × ${ev.l} — ${nm} gana ${fmt(ev.gain)}.`,'hot');
       S.revealed.add(ev.l);const t=revealLetter(ev.l);await sleep(t+150);Snd.coin();break;}
     case 'consfail':
       Snd.buzz();msg(`No hay ${ev.l}. ${nm} pierde el turno.`,'bad');await sleep(1100);break;
     case 'voc':{
-      msg(`${nm} compra la ${ev.l}: ${ev.n} en el panel.`,'hot');
+      msg(ev.free?`${nm} usa su vocal gratis: ${ev.n} × ${ev.l}.`:`${nm} compra la ${ev.l}: ${ev.n} en el panel.`,'hot');
       S.revealed.add(ev.l);const t=revealLetter(ev.l);await sleep(t+150);break;}
     case 'vocfail':
-      Snd.buzz();msg(`No hay ${ev.l}. ${nm} pierde ${fmt(COSTE_VOCAL)} y el turno.`,'bad');await sleep(1100);break;
+      Snd.buzz();
+      msg(ev.free?`No hay ${ev.l}. ${nm} pierde el turno.`:`No hay ${ev.l}. ${nm} pierde ${fmt(COSTE_VOCAL)} y el turno.`,'bad');
+      await sleep(1100);break;
     case 'solving':
       msg(`${nm} va a resolver…`,'hot');break;
     case 'solvefail':
@@ -1595,9 +1651,10 @@ async function onlineSpin(){
   if(!myTurn()||ON.busy||S.phase!=='idle')return;
   if(!quedanConsOcultas())return;
   ON.busy=true;S.phase='spinning';setActions(false);msg('Girando…');
-  const rotMod=Math.round(Math.random()*36000)/100;
+  const stop=randomStop();
+  const rotMod=stop.rot;
   const turns=3+Math.floor(Math.random()*3);
-  const wedge=WEDGES[wedgeAt(rotMod)];
+  const wedge=WEDGES[stop.wedge];
   const seq=bumpSeq();
   await fbUpd(roomPath(),{seq,last:{seq,type:'spin',pid:ON.myId,rot:rotMod,turns}});
   await spinWheelTo(rotMod,turns);
@@ -1611,6 +1668,31 @@ async function onlineSpin(){
     const s2=ON.seq+1;ON.seq=s2;
     await fbUpd(roomPath(),{seq:s2,turn:nextIdx(),last:{seq:s2,type:'pierde',pid:ON.myId}});
     await sleep(1100);S.phase='sync';ON.busy=false;
+  }else if(wedge.v===-3){ // ×2
+    const idx=ON.data.order.indexOf(ON.myId);
+    const antes=(ON.data.money&&ON.data.money[ON.myId])||0;
+    const newM=antes*2;
+    const s2=ON.seq+1;ON.seq=s2;
+    await fbUpd(roomPath(),{seq:s2,['money/'+ON.myId]:newM,last:{seq:s2,type:'x2',pid:ON.myId,total:newM}});
+    if(antes>0){Snd.coin();S.players[idx].m=newM;bumpChip(idx);}
+    msg(antes>0?`¡×2! Duplicas tu dinero: ${fmt(newM)}.`:'×2… con 0 € no hay milagro. Sigues jugando.','hot');
+    await sleep(1400);
+    S.phase='idle';ON.busy=false;setActions(true);
+  }else if(wedge.v===-2){ // vocal gratis
+    if(![...VOCALES].some(v=>!S.used.has(v))){
+      const s2=ON.seq+1;ON.seq=s2;
+      await fbUpd(roomPath(),{seq:s2,last:{seq:s2,type:'freenone',pid:ON.myId}});
+      msg('Vocal gratis… pero no quedan vocales. Sigues jugando.','hot');
+      await sleep(1200);
+      S.phase='idle';ON.busy=false;setActions(true);
+    }else{
+      const s2=ON.seq+1;ON.seq=s2;
+      await fbUpd(roomPath(),{seq:s2,last:{seq:s2,type:'freevoc',pid:ON.myId}});
+      S.freeVowel=true;
+      S.phase='voc';showKB('voc');$('kb-title').textContent='VOCAL GRATIS';
+      msg('¡Vocal gratis! Elige vocal.','hot');
+      ON.busy=false;
+    }
   }else{
     S.pend=wedge.v;S.phase='cons';showKB('cons');
     msg(`${fmt(wedge.v)} por letra. Elige consonante.`,'hot');
@@ -1645,20 +1727,22 @@ async function onlineVoc(L){
   S.used.add(L);
   const used=[...S.used].join('');
   const n=countLetter(L);
+  const free=!!S.freeVowel;S.freeVowel=false;
   const idx=ON.data.order.indexOf(ON.myId);
-  const newM=((ON.data.money&&ON.data.money[ON.myId])||0)-COSTE_VOCAL;
+  const newM=((ON.data.money&&ON.data.money[ON.myId])||0)-(free?0:COSTE_VOCAL);
   const seq=bumpSeq();
-  S.players[idx].m=newM;bumpChip(idx);
+  if(!free){S.players[idx].m=newM;bumpChip(idx);}
   if(n===0){
-    Snd.buzz();msg(`No hay ${L}. Pierdes ${fmt(COSTE_VOCAL)} y el turno.`,'bad');
+    Snd.buzz();
+    msg(free?`No hay ${L}. Pierdes el turno.`:`No hay ${L}. Pierdes ${fmt(COSTE_VOCAL)} y el turno.`,'bad');
     await fbUpd(roomPath(),{seq,used,['money/'+ON.myId]:newM,turn:nextIdx(),
-      last:{seq,type:'vocfail',pid:ON.myId,l:L}});
+      last:{seq,type:'vocfail',pid:ON.myId,l:L,free:free?1:0}});
     await sleep(1100);S.phase='sync';ON.busy=false;return;
   }
   S.revealed.add(L);
-  msg(`${n} × ${L}.`,'hot');
+  msg(free?`${n} × ${L} — vocal gratis.`:`${n} × ${L}.`,'hot');
   await fbUpd(roomPath(),{seq,used,revealed:[...S.revealed].join(''),
-    ['money/'+ON.myId]:newM,last:{seq,type:'voc',pid:ON.myId,l:L,n}});
+    ['money/'+ON.myId]:newM,last:{seq,type:'voc',pid:ON.myId,l:L,n,free:free?1:0}});
   const t=revealLetter(L);await sleep(t+150);
   if(lettersLeft().size===0){await onlineWinRound();ON.busy=false;return;}
   S.phase='idle';ON.busy=false;setActions(true);
