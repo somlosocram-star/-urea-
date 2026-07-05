@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.6</title>
+<title>Áurea · v0.7</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -199,6 +199,22 @@ html.pre-light #app-splash{background:#f3f2ee}
 .rk-m{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1rem}
 .rk-row.win .rk-m{color:var(--amber)}
 
+/* ===== online ===== */
+.name-input,.code-input{background:var(--panel);border:1px solid var(--line);color:var(--text);font-family:'IBM Plex Mono',monospace;text-align:center;padding:.9rem 1rem;font-size:1rem;letter-spacing:.2em;outline:none;border-radius:8px;width:min(80vw,300px);margin-bottom:1.4rem;text-transform:uppercase}
+.name-input:focus,.code-input:focus{border-color:var(--amber)}
+.code-input{font-size:1.7rem;letter-spacing:.55em;width:min(64vw,230px);padding-left:1.4rem}
+.join-error{color:var(--bad);font-family:'IBM Plex Mono',monospace;font-size:.6rem;letter-spacing:.2em;min-height:1.2em;margin-bottom:1rem;text-transform:uppercase}
+.room-code{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:2.6rem;letter-spacing:.5em;padding-left:.5em;margin:.5rem 0 1.6rem;color:var(--amber)}
+.lobby-players{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.8rem;width:min(80vw,300px)}
+.lobby-player{display:flex;align-items:center;gap:.7rem;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:.6rem .9rem}
+.lobby-player .dot{width:10px;height:10px;border-radius:50%;background:var(--amber);flex:0 0 auto}
+.lobby-player.offline .dot{background:var(--muted)}
+.lobby-player .nm{font-family:'Cormorant Garamond',serif;font-size:1.25rem;flex:1;text-align:left}
+.lobby-player .tag{font-family:'IBM Plex Mono',monospace;font-size:.5rem;letter-spacing:.2em;color:var(--amber);text-transform:uppercase}
+.guest-waiting{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.05rem;color:var(--muted);margin-bottom:1.2rem}
+.chip.off{opacity:.4}
+#btn-skip{font-size:.55rem;padding:.5rem 1rem}
+
 /* tutorial */
 #tut{position:fixed;inset:0;z-index:800;background:color-mix(in srgb,var(--bg) 94%,transparent);display:none;align-items:center;justify-content:center;padding:1.5rem}
 #tut.visible{display:flex;animation:screenIn .35s ease both}
@@ -233,7 +249,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   <div class="subtitle">gira · compra · resuelve</div>
   <div class="btn-row">
     <button class="btn" id="btn-solo">Un jugador</button>
-    <button class="btn btn-soon" disabled>Online</button>
+    <button class="btn" id="btn-online">Online</button>
     <button class="btn btn-secondary" id="btn-install" style="display:none">Instalar en el móvil</button>
   </div>
 </section>
@@ -279,10 +295,46 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
   <div class="g-foot">
     <div id="msg">&nbsp;</div>
+    <button class="btn btn-secondary" id="btn-skip" style="display:none">Saltar turno (desconectado)</button>
     <div class="actions" id="actions">
       <button class="btn-gold" id="a-vowel">Vocal</button>
       <button class="btn-gold" id="a-solve">Resolver</button>
     </div>
+  </div>
+</section>
+
+<!-- ONLINE: menú -->
+<section id="screen-online" class="screen">
+  <div class="g-eyebrow" style="letter-spacing:.5em;margin-bottom:1rem">ONLINE · 2-3 JUGADORES</div>
+  <h1 class="title" style="font-size:clamp(1.8rem,7vw,2.6rem);margin-bottom:1.6rem">Áurea</h1>
+  <input id="name-input" class="name-input" maxlength="12" placeholder="TU NOMBRE" autocomplete="off">
+  <div class="btn-row">
+    <button class="btn" id="btn-create">Crear sala</button>
+    <button class="btn" id="btn-gojoin">Unirse a sala</button>
+    <button class="btn btn-secondary" id="btn-online-back">Volver</button>
+  </div>
+</section>
+
+<!-- ONLINE: unirse -->
+<section id="screen-join" class="screen">
+  <div class="g-eyebrow" style="letter-spacing:.5em;margin-bottom:1.4rem">CÓDIGO DE SALA</div>
+  <input id="code-input" class="code-input" maxlength="4" placeholder="····" autocomplete="off">
+  <div class="join-error" id="join-error"></div>
+  <div class="btn-row">
+    <button class="btn" id="btn-join">Entrar</button>
+    <button class="btn btn-secondary" id="btn-join-back">Volver</button>
+  </div>
+</section>
+
+<!-- ONLINE: lobby -->
+<section id="screen-lobby" class="screen">
+  <div class="g-eyebrow" style="letter-spacing:.5em">CÓDIGO DE SALA</div>
+  <div class="room-code mono" id="room-code">····</div>
+  <div class="lobby-players" id="lobby-players"></div>
+  <div class="guest-waiting" id="lobby-wait" style="display:none">esperando al anfitrión…</div>
+  <div class="btn-row">
+    <button class="btn" id="btn-start" style="display:none">Empezar</button>
+    <button class="btn btn-secondary" id="btn-lobby-back">Salir</button>
   </div>
 </section>
 
@@ -293,6 +345,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   <div class="rv-win" id="rv-win"></div>
   <div class="rv-bank" id="rv-bank"></div>
   <button class="btn" id="rv-next">Continuar</button>
+  <div class="guest-waiting" id="rv-wait" style="display:none">esperando al anfitrión…</div>
 </div>
 
 <!-- FIN DE PARTIDA -->
@@ -318,7 +371,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.6</div>
+<div class="ver" id="ver">ÁUREA · V0.7</div>
 
 <script>
 'use strict';
@@ -751,10 +804,12 @@ function flexPointer(){
   if(!p)return;
   p.classList.remove('flex');void p.offsetWidth;p.classList.add('flex');
 }
-function spinWheel(){
+function wedgeAt(rot){const step=360/WEDGES.length;return Math.floor(((360-(rot%360))%360)/step);}
+function spinWheelTo(rotMod,turns){
   return new Promise(res=>{
-    const extra=rnd(3.5,5.5)*360+rnd(0,360);
-    const from=S.wheelRot,to=from+extra,dur=rnd(3200,4000);
+    const from=((S.wheelRot%360)+360)%360;
+    const delta=((rotMod-from)%360+360)%360+(turns||4)*360;
+    const to=from+delta,dur=rnd(3200,4000);
     const g=$('wheel-rot');const t0=performance.now();
     let lastWedge=-1;const step=360/WEDGES.length;
     function frame(now){
@@ -765,10 +820,15 @@ function spinWheel(){
       const w=Math.floor(((360-(rot%360))%360)/step);
       if(w!==lastWedge){Snd.tick();flexPointer();lastWedge=w;}
       if(p<1)requestAnimationFrame(frame);
-      else{S.wheelRot=to%360;res(WEDGES[Math.floor(((360-(S.wheelRot%360))%360)/step)]);}
+      else{S.wheelRot=rotMod;g.style.transform=`rotate(${rotMod}deg)`;res();}
     }
     requestAnimationFrame(frame);
   });
+}
+async function spinWheel(){
+  const rotMod=Math.random()*360;
+  await spinWheelTo(rotMod,3+Math.floor(Math.random()*3));
+  return WEDGES[wedgeAt(rotMod)];
 }
 
 /* ================= PANEL ================= */
@@ -847,12 +907,13 @@ function hideKB(){
 }
 
 /* ================= HUD ================= */
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function renderChips(){
   const box=$('chips');box.innerHTML='';
   S.players.forEach((p,i)=>{
     const c=document.createElement('div');
-    c.className='chip'+(i===S.turn?' on':'');c.id='chip-'+i;
-    c.innerHTML=`<div class="c-nm">${p.n}</div><div class="c-m">${fmt(p.m)}</div><div class="c-b">banca <b>${fmt(p.b)}</b></div>`;
+    c.className='chip'+(i===S.turn?' on':'')+(p.off?' off':'');c.id='chip-'+i;
+    c.innerHTML=`<div class="c-nm">${escapeHtml(p.n)}</div><div class="c-m">${fmt(p.m)}</div><div class="c-b">banca <b>${fmt(p.b)}</b></div>`;
     box.appendChild(c);
   });
 }
@@ -937,6 +998,7 @@ async function loseTurn(reason){
 
 /* --- acciones del jugador --- */
 $('hub-btn').addEventListener('click',async()=>{
+  if(ON.active){onlineSpin();return;}
   if(S.phase!=='idle')return;
   S.phase='spinning';setActions(false);msg('Girando…');
   const w=await spinWheel();
@@ -953,7 +1015,11 @@ $('a-solve').addEventListener('click',()=>{
 });
 $('kb-cancel').addEventListener('click',()=>{
   if(S.phase!=='solve')return;
-  if(S.solveTyped>0){abortSolve();loseTurn('Resolución abandonada. Pierdes el turno.');}
+  if(S.solveTyped>0){
+    abortSolve();
+    if(ON.active){ON.busy=true;onlineSolveFail();}
+    else loseTurn('Resolución abandonada. Pierdes el turno.');
+  }
   else{S.phase='idle';hideKB();setActions(true);msg('Tu turno.');}
 });
 
@@ -984,6 +1050,12 @@ async function resolveWedge(w,pi){
 
 function onKey(L){
   Snd.key();
+  if(ON.active){
+    if(S.phase==='cons')onlineCons(L);
+    else if(S.phase==='voc')onlineVoc(L);
+    else if(S.phase==='solve')solveKey(L);
+    return;
+  }
   if(S.phase==='cons')guessCons(L,S.turn);
   else if(S.phase==='voc')guessVowel(L,S.turn);
   else if(S.phase==='solve')solveKey(L);
@@ -1046,6 +1118,10 @@ function startSolve(){
   S.solveList[0].classList.add('cursor');
   showKB('solve');
   msg('Rellena las letras ocultas en orden. Un fallo y pierdes el turno.','hot');
+  if(ON.active){
+    const seq=bumpSeq();
+    fbUpd(roomPath(),{seq,last:{seq,type:'solving',pid:ON.myId}});
+  }
 }
 function abortSolve(){
   S.solveList.forEach(c=>c.classList.remove('cursor','tent','rev'));
@@ -1063,7 +1139,8 @@ async function solveKey(L){
       // completado
       S.solveList.forEach(c=>c.classList.remove('tent'));
       for(const ch of S.txt)if(esLetra(ch))S.revealed.add(ch);
-      winRound(S.turn);
+      if(ON.active){ON.busy=true;onlineWinRound().then(()=>{ON.busy=false;});}
+      else winRound(S.turn);
     }else{
       S.solveList[S.solveIdx].classList.add('cursor');
     }
@@ -1076,7 +1153,8 @@ async function solveKey(L){
     S.solveList.forEach(c=>{c.classList.remove('cursor');if(c.classList.contains('tent'))c.classList.remove('tent','rev');});
     S.solveList=[];
     hideKB();
-    await loseTurn('Fallo al resolver. Pierdes el turno.');
+    if(ON.active){ON.busy=true;await onlineSolveFail();}
+    else await loseTurn('Fallo al resolver. Pierdes el turno.');
   }
 }
 
@@ -1172,6 +1250,7 @@ function winRound(pi){
   setTimeout(()=>$('round-veil').classList.add('visible'),900);
 }
 $('rv-next').addEventListener('click',()=>{
+  if(ON.active){onlineNextRound();return;}
   $('round-veil').classList.remove('visible');
   S.cpuAbort=false;
   S.round++;
@@ -1179,6 +1258,7 @@ $('rv-next').addEventListener('click',()=>{
   else startRound();
 });
 function endGame(){
+  $('btn-rematch').style.display='';
   const order=[...S.players].sort((a,b)=>b.b-a.b);
   const win=order[0];
   $('end-title').textContent=win.n==='TÚ'?'¡Has ganado!':`Gana ${win.n.charAt(0)+win.n.slice(1).toLowerCase()}`;
@@ -1192,8 +1272,417 @@ function endGame(){
   show('screen-end');
 }
 $('btn-rematch').addEventListener('click',newGame);
-$('btn-menu').addEventListener('click',()=>{S.cpuAbort=true;S.gen++;show('screen-home');});
-$('btn-solo').addEventListener('click',newGame);
+$('btn-menu').addEventListener('click',()=>{
+  if(ON.active)leaveOnline();
+  S.cpuAbort=true;S.gen++;show('screen-home');
+});
+$('btn-solo').addEventListener('click',()=>{
+  if(ON.active)leaveOnline();
+  S.players=[
+    {n:'TÚ',cpu:false,m:0,b:0},
+    {n:'IRIS',cpu:true,m:0,b:0,skill:.72},
+    {n:'BRUNO',cpu:true,m:0,b:0,skill:.62},
+  ];
+  newGame();
+});
+
+/* ================= ONLINE (Firebase REST + polling, patrón Cábala) ================= */
+const DB_URL='https://subasta-de-tiempo-default-rtdb.europe-west1.firebasedatabase.app';
+const BASE='g/aurea/rooms';
+const SV={'.sv':'timestamp'};
+const HB_MS=2000,HB_TIMEOUT=6000,POLL_MS=400,MAX_JUG=3;
+
+const ON={active:false,code:null,data:null,stage:null,round:-1,seq:0,busy:false,
+  poll:null,pollLast:null,hb:null,chain:Promise.resolve(),turnPainted:-2,myId:''};
+try{ON.myId=localStorage.getItem('aurea_id')||'';}catch(e){}
+if(!ON.myId){ON.myId='p'+Math.random().toString(36).slice(2,10);try{localStorage.setItem('aurea_id',ON.myId);}catch(e){}}
+
+async function fbFetch(path,opts){
+  try{const r=await fetch(DB_URL+'/'+path+'.json',Object.assign({mode:'cors'},opts||{}));if(!r.ok)return null;return r.json();}
+  catch(e){return null;}
+}
+const fbGet=p=>fbFetch(p);
+const fbSet=(p,v)=>fbFetch(p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(v)});
+const fbUpd=(b,data)=>Promise.all(Object.entries(data).map(([k,v])=>
+  fbFetch(b+'/'+k,v===null?{method:'DELETE'}:{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(v)})));
+const fbDel=p=>fbFetch(p,{method:'DELETE'});
+const roomPath=()=>BASE+'/'+ON.code;
+
+function genCode(){const L='ABCDEFGHJKLMNPQRSTUVWXYZ';let s='';for(let i=0;i<4;i++)s+=L[Math.floor(Math.random()*L.length)];return s;}
+function isConn(p){return p&&p.lastSeen&&(Date.now()-p.lastSeen<HB_TIMEOUT);}
+function currentHostId(){
+  const pl=(ON.data&&ON.data.players)||{};
+  const arr=Object.keys(pl).filter(id=>isConn(pl[id])).map(id=>({id,j:pl[id].joinedAt||0}));
+  if(!arr.length)return null;
+  arr.sort((a,b)=>(a.j-b.j)||(a.id<b.id?-1:1));
+  return arr[0].id;
+}
+const soyHost=()=>currentHostId()===ON.myId;
+const pname=pid=>{const p=ON.data&&ON.data.players&&ON.data.players[pid];return p?p.name.toUpperCase():'JUGADOR';};
+const myTurn=()=>ON.data&&ON.data.state==='play'&&ON.data.order&&ON.data.order[ON.data.turn]===ON.myId;
+const nextIdx=()=>(ON.data.turn+1)%ON.data.order.length;
+const bumpSeq=()=>{const s=(ON.data.seq||0)+1;ON.seq=s;return s;};
+
+function startPoll(){
+  stopPoll();
+  const tick=()=>{
+    fbGet(roomPath()).then(data=>{
+      const s=JSON.stringify(data);
+      if(s!==ON.pollLast){ON.pollLast=s;ON.data=data;handleRoom();}
+      if(ON.active)ON.poll=setTimeout(tick,POLL_MS);
+    }).catch(()=>{if(ON.active)ON.poll=setTimeout(tick,POLL_MS);});
+  };
+  tick();
+}
+function stopPoll(){clearTimeout(ON.poll);ON.poll=null;ON.pollLast=null;}
+function startHB(){
+  stopHB();
+  const beat=()=>{if(ON.active&&ON.code)fbSet(roomPath()+'/players/'+ON.myId+'/lastSeen',Date.now());};
+  beat();ON.hb=setInterval(beat,HB_MS);
+}
+function stopHB(){if(ON.hb){clearInterval(ON.hb);ON.hb=null;}}
+function leaveOnline(){
+  stopPoll();stopHB();
+  ON.active=false;ON.code=null;ON.data=null;ON.stage=null;ON.round=-1;ON.seq=0;ON.busy=false;
+  ON.chain=Promise.resolve();ON.turnPainted=-2;
+  $('btn-skip').style.display='none';
+  $('round-veil').classList.remove('visible');
+}
+
+/* --- lobby --- */
+let myName='';
+try{myName=localStorage.getItem('aurea_name')||'';}catch(e){}
+$('name-input').value=myName;
+function saveName(){
+  myName=$('name-input').value.trim().slice(0,12)||'JUGADOR';
+  try{localStorage.setItem('aurea_name',myName);}catch(e){}
+}
+$('btn-online').addEventListener('click',()=>{show('screen-online');});
+$('btn-online-back').addEventListener('click',()=>show('screen-home'));
+$('btn-join-back').addEventListener('click',()=>show('screen-online'));
+$('btn-gojoin').addEventListener('click',()=>{saveName();$('join-error').textContent='';show('screen-join');});
+$('btn-create').addEventListener('click',async()=>{
+  saveName();
+  let code;
+  for(let i=0;i<6;i++){code=genCode();const ex=await fbGet(BASE+'/'+code);if(!ex)break;}
+  ON.code=code;ON.active=true;
+  await fbSet(roomPath(),{
+    code,createdAt:SV,state:'lobby',v:1,seq:0,
+    players:{[ON.myId]:{name:myName,joinedAt:SV,lastSeen:Date.now()}}
+  });
+  show('screen-lobby');$('room-code').textContent=code;
+  startPoll();startHB();
+});
+$('btn-join').addEventListener('click',async()=>{
+  saveName();
+  const code=$('code-input').value.trim().toUpperCase();
+  if(code.length!==4){$('join-error').textContent='código de 4 letras';return;}
+  const data=await fbGet(BASE+'/'+code);
+  if(!data){$('join-error').textContent='no existe esa sala';return;}
+  if(data.state!=='lobby'){$('join-error').textContent='la partida ya ha empezado';return;}
+  if(Object.keys(data.players||{}).length>=MAX_JUG){$('join-error').textContent='la sala está llena (3)';return;}
+  ON.code=code;ON.active=true;
+  await fbSet(roomPath()+'/players/'+ON.myId,{name:myName,joinedAt:SV,lastSeen:Date.now()});
+  show('screen-lobby');$('room-code').textContent=code;
+  startPoll();startHB();
+});
+$('btn-lobby-back').addEventListener('click',async()=>{
+  const pl=(ON.data&&ON.data.players)||{};
+  const others=Object.keys(pl).filter(id=>id!==ON.myId);
+  if(others.length===0)await fbDel(roomPath());
+  else await fbDel(roomPath()+'/players/'+ON.myId);
+  leaveOnline();show('screen-home');
+});
+function renderLobby(){
+  const pl=(ON.data&&ON.data.players)||{};
+  const ids=Object.keys(pl).sort((a,b)=>(pl[a].joinedAt||0)-(pl[b].joinedAt||0));
+  const host=currentHostId();
+  const box=$('lobby-players');box.innerHTML='';
+  ids.forEach(id=>{
+    const d=document.createElement('div');
+    d.className='lobby-player'+(isConn(pl[id])?'':' offline');
+    d.innerHTML=`<span class="dot"></span><span class="nm">${escapeHtml(pl[id].name)}</span>`+
+      (id===host?'<span class="tag">anfitrión</span>':'')+(id===ON.myId?'<span class="tag">tú</span>':'');
+    box.appendChild(d);
+  });
+  const puedo=soyHost()&&ids.filter(id=>isConn(pl[id])).length>=2;
+  $('btn-start').style.display=puedo?'':'none';
+  $('lobby-wait').style.display=soyHost()?'none':'';
+}
+$('btn-start').addEventListener('click',async()=>{
+  const pl=ON.data.players||{};
+  const order=Object.keys(pl).filter(id=>isConn(pl[id]))
+    .sort((a,b)=>(pl[a].joinedAt||0)-(pl[b].joinedAt||0)).slice(0,MAX_JUG);
+  if(order.length<2)return;
+  const money={},bank={};order.forEach(id=>{money[id]=0;bank[id]=0;});
+  const seq=bumpSeq();
+  await fbUpd(roomPath(),{
+    state:'play',order,panels:pickPanels(),round:0,turn:0,
+    money,bank,revealed:'',used:'',seq,last:{seq,type:'start'}
+  });
+});
+
+/* --- sincronización de estado --- */
+function syncPlayersFromData(){
+  const d=ON.data;
+  S.players=d.order.map(pid=>({pid,n:pname(pid),cpu:false,
+    m:(d.money&&d.money[pid])||0,b:(d.bank&&d.bank[pid])||0,
+    off:!isConn(d.players[pid])}));
+  S.turn=d.turn;
+}
+function enterOnlineRound(){
+  const d=ON.data;
+  ON.stage='play';ON.round=d.round;ON.busy=false;
+  ON.seq=d.last?d.last.seq:0;ON.turnPainted=-2;
+  const [cat,txt]=PANELES[d.panels[d.round]];
+  S.cat=cat;S.txt=txt;S.rows=wrapPanel(txt);
+  S.revealed=new Set([...(d.revealed||'')]);
+  S.used=new Set([...(d.used||'')]);
+  syncPlayersFromData();
+  $('g-round').textContent=`RONDA ${d.round+1} / 3`;
+  $('g-cat').textContent=cat.charAt(0)+cat.slice(1).toLowerCase();
+  renderPanel();renderChips();buildWheel();hideKB();
+  $('round-veil').classList.remove('visible');
+  if(!document.getElementById('screen-game').classList.contains('visible'))show('screen-game');
+  softSync();
+}
+function paintTurnMsg(){
+  if(ON.turnPainted===ON.data.turn)return;
+  ON.turnPainted=ON.data.turn;
+  if(myTurn()){
+    if(!quedanConsOcultas())msg('Solo quedan vocales: compra o resuelve.','hot');
+    else msg('Tu turno. Pulsa el medallón, compra o resuelve.');
+  }else msg(`Turno de ${pname(ON.data.order[ON.data.turn])}…`);
+}
+function softSync(){
+  const d=ON.data;
+  if(!d||d.state!=='play')return;
+  S.revealed=new Set([...(d.revealed||'')]);
+  S.used=new Set([...(d.used||'')]);
+  syncPlayersFromData();renderChips();
+  document.querySelectorAll('.cell[data-ch]').forEach(c=>{
+    const ch=c.dataset.ch;
+    if(!esLetra(ch)||S.revealed.has(ch))c.classList.add('rev');
+  });
+  // saltar turno de desconectado (solo anfitrión)
+  const owner=d.order[d.turn];
+  const stuck=!myTurn()&&!isConn(d.players[owner])&&soyHost();
+  $('btn-skip').style.display=stuck?'':'none';
+  if(ON.busy)return;
+  if(myTurn()){
+    if(S.phase==='sync'||S.phase==='menu'){S.phase='idle';setActions(true);paintTurnMsg();}
+    else if(S.phase==='idle'){setActions(true);paintTurnMsg();}
+  }else{
+    if(S.phase!=='sync'){S.phase='sync';setActions(false);hideKB();}
+    paintTurnMsg();
+  }
+}
+$('btn-skip').addEventListener('click',async()=>{
+  if(!soyHost()||myTurn()||!ON.data)return;
+  const owner=ON.data.order[ON.data.turn];
+  if(isConn(ON.data.players[owner]))return;
+  const seq=bumpSeq();
+  await fbUpd(roomPath(),{seq,turn:nextIdx(),last:{seq,type:'skip',pid:owner}});
+});
+
+/* --- animación de eventos remotos --- */
+async function animEvent(ev){
+  const nm=pname(ev.pid);
+  switch(ev.type){
+    case 'spin':
+      msg(`${nm} gira la ruleta…`);
+      await spinWheelTo(ev.rot,ev.turns||4);
+      break;
+    case 'quiebra':
+      Snd.quiebra();msg(`¡QUIEBRA! ${nm} pierde el dinero de la ronda.`,'bad');await sleep(1300);break;
+    case 'pierde':
+      Snd.buzz();msg(`${nm} pierde el turno.`,'bad');await sleep(1100);break;
+    case 'skip':
+      msg(`Turno saltado: ${nm} está desconectado.`,'bad');await sleep(900);break;
+    case 'cons':{
+      msg(`${ev.n} × ${ev.l} — ${nm} gana ${fmt(ev.gain)}.`,'hot');
+      S.revealed.add(ev.l);const t=revealLetter(ev.l);await sleep(t+150);Snd.coin();break;}
+    case 'consfail':
+      Snd.buzz();msg(`No hay ${ev.l}. ${nm} pierde el turno.`,'bad');await sleep(1100);break;
+    case 'voc':{
+      msg(`${nm} compra la ${ev.l}: ${ev.n} en el panel.`,'hot');
+      S.revealed.add(ev.l);const t=revealLetter(ev.l);await sleep(t+150);break;}
+    case 'vocfail':
+      Snd.buzz();msg(`No hay ${ev.l}. ${nm} pierde ${fmt(COSTE_VOCAL)} y el turno.`,'bad');await sleep(1100);break;
+    case 'solving':
+      msg(`${nm} va a resolver…`,'hot');break;
+    case 'solvefail':
+      Snd.buzz();$('panel').classList.add('shake');await sleep(450);
+      $('panel').classList.remove('shake');
+      msg(`${nm} falla al resolver.`,'bad');await sleep(900);break;
+    case 'solvewin':{
+      Snd.win();msg(`${nm} resuelve el panel.`,'hot');
+      for(const c of hiddenCells()){c.classList.add('rev','flash');Snd.ding();await sleep(180);}
+      await sleep(400);break;}
+  }
+}
+function handleRoom(){
+  const d=ON.data;
+  if(!ON.active)return;
+  if(!d){leaveOnline();show('screen-home');return;}
+  if(d.state==='lobby'){renderLobby();return;}
+  if(d.state==='play'){
+    if(ON.stage!=='play'||ON.round!==d.round){ON.chain=ON.chain.then(()=>enterOnlineRound());return;}
+    if(d.last&&d.last.seq>ON.seq){
+      const ev=d.last;ON.seq=ev.seq;
+      ON.chain=ON.chain.then(()=>animEvent(ev)).then(()=>softSync());
+    }else ON.chain=ON.chain.then(()=>softSync());
+    return;
+  }
+  if(d.state==='roundend'){
+    if(d.last&&d.last.seq>ON.seq){
+      const ev=d.last;ON.seq=ev.seq;
+      ON.chain=ON.chain.then(()=>animEvent(ev)).then(()=>showOnlineRoundEnd());
+    }else ON.chain=ON.chain.then(()=>showOnlineRoundEnd());
+    return;
+  }
+  if(d.state==='end'){ON.chain=ON.chain.then(()=>showOnlineEnd());return;}
+}
+function showOnlineRoundEnd(){
+  const d=ON.data;if(!d||d.state!=='roundend')return;
+  ON.stage='roundend';S.phase='sync';setActions(false);hideKB();
+  document.querySelectorAll('.cell[data-ch]').forEach(c=>c.classList.add('rev'));
+  syncPlayersFromData();renderChips();
+  const win=d.roundWin||{};
+  $('rv-eyebrow').textContent=`RONDA ${d.round+1} RESUELTA`;
+  $('rv-phrase').textContent=S.txt;
+  $('rv-win').innerHTML=`Resuelve <b>${escapeHtml(pname(win.pid))}</b>`;
+  $('rv-bank').textContent=`+ ${fmt(win.amount||0)} a la banca`;
+  const fin=d.round+1>=3;
+  $('rv-next').textContent=fin?'Ver resultado':'Siguiente ronda';
+  $('rv-next').style.display=soyHost()?'':'none';
+  $('rv-wait').style.display=soyHost()?'none':'';
+  $('round-veil').classList.add('visible');
+}
+async function onlineNextRound(){
+  const d=ON.data;if(!soyHost()||d.state!=='roundend')return;
+  const seq=bumpSeq();
+  if(d.round+1>=3){
+    await fbUpd(roomPath(),{state:'end',seq,last:{seq,type:'nextround'}});
+  }else{
+    const upd={state:'play',round:d.round+1,turn:(d.round+1)%d.order.length,
+      revealed:'',used:'',seq,last:{seq,type:'nextround'}};
+    d.order.forEach(pid=>upd['money/'+pid]=0);
+    await fbUpd(roomPath(),upd);
+  }
+}
+function showOnlineEnd(){
+  if(ON.stage==='end')return;
+  ON.stage='end';
+  const d=ON.data;
+  $('round-veil').classList.remove('visible');
+  const rank=d.order.map(pid=>({n:pname(pid),b:(d.bank&&d.bank[pid])||0,me:pid===ON.myId}))
+    .sort((a,b)=>b.b-a.b);
+  $('end-title').textContent=rank[0].me?'¡Has ganado!':`Gana ${rank[0].n.charAt(0)+rank[0].n.slice(1).toLowerCase()}`;
+  const rk=$('end-rank');rk.innerHTML='';
+  rank.forEach((p,i)=>{
+    const r=document.createElement('div');
+    r.className='rk-row'+(i===0?' win':'');
+    r.innerHTML=`<span class="rk-pos">${i+1}</span><span class="rk-nm">${escapeHtml(p.n.charAt(0)+p.n.slice(1).toLowerCase())}</span><span class="rk-m">${fmt(p.b)}</span>`;
+    rk.appendChild(r);
+  });
+  $('btn-rematch').style.display='none';
+  show('screen-end');
+}
+
+/* --- acciones del jugador de turno --- */
+async function onlineSpin(){
+  if(!myTurn()||ON.busy||S.phase!=='idle')return;
+  if(!quedanConsOcultas())return;
+  ON.busy=true;S.phase='spinning';setActions(false);msg('Girando…');
+  const rotMod=Math.round(Math.random()*36000)/100;
+  const turns=3+Math.floor(Math.random()*3);
+  const wedge=WEDGES[wedgeAt(rotMod)];
+  const seq=bumpSeq();
+  await fbUpd(roomPath(),{seq,last:{seq,type:'spin',pid:ON.myId,rot:rotMod,turns}});
+  await spinWheelTo(rotMod,turns);
+  if(wedge.v===-1){
+    Snd.quiebra();msg('¡QUIEBRA! Pierdes el dinero de la ronda.','bad');
+    const s2=ON.seq+1;ON.seq=s2;
+    await fbUpd(roomPath(),{seq:s2,['money/'+ON.myId]:0,turn:nextIdx(),last:{seq:s2,type:'quiebra',pid:ON.myId}});
+    await sleep(1300);S.phase='sync';ON.busy=false;
+  }else if(wedge.v===0){
+    Snd.buzz();msg('Pierdes el turno.','bad');
+    const s2=ON.seq+1;ON.seq=s2;
+    await fbUpd(roomPath(),{seq:s2,turn:nextIdx(),last:{seq:s2,type:'pierde',pid:ON.myId}});
+    await sleep(1100);S.phase='sync';ON.busy=false;
+  }else{
+    S.pend=wedge.v;S.phase='cons';showKB('cons');
+    msg(`${fmt(wedge.v)} por letra. Elige consonante.`,'hot');
+    ON.busy=false;
+  }
+}
+async function onlineCons(L){
+  S.phase='busy';hideKB();ON.busy=true;
+  S.used.add(L);
+  const used=[...S.used].join('');
+  const n=countLetter(L);
+  const seq=bumpSeq();
+  if(n===0){
+    Snd.buzz();msg(`No hay ${L}. Pierdes el turno.`,'bad');
+    await fbUpd(roomPath(),{seq,used,turn:nextIdx(),last:{seq,type:'consfail',pid:ON.myId,l:L}});
+    await sleep(1100);S.phase='sync';ON.busy=false;return;
+  }
+  S.revealed.add(L);
+  const gan=S.pend*n;
+  const idx=ON.data.order.indexOf(ON.myId);
+  const newM=((ON.data.money&&ON.data.money[ON.myId])||0)+gan;
+  msg(`${n} × ${L} — ganas ${fmt(gan)}.`,'hot');
+  await fbUpd(roomPath(),{seq,used,revealed:[...S.revealed].join(''),
+    ['money/'+ON.myId]:newM,last:{seq,type:'cons',pid:ON.myId,l:L,n,gain:gan}});
+  const t=revealLetter(L);await sleep(t+150);Snd.coin();
+  S.players[idx].m=newM;bumpChip(idx);
+  if(lettersLeft().size===0){await onlineWinRound();ON.busy=false;return;}
+  S.phase='idle';ON.busy=false;setActions(true);
+}
+async function onlineVoc(L){
+  S.phase='busy';hideKB();ON.busy=true;
+  S.used.add(L);
+  const used=[...S.used].join('');
+  const n=countLetter(L);
+  const idx=ON.data.order.indexOf(ON.myId);
+  const newM=((ON.data.money&&ON.data.money[ON.myId])||0)-COSTE_VOCAL;
+  const seq=bumpSeq();
+  S.players[idx].m=newM;bumpChip(idx);
+  if(n===0){
+    Snd.buzz();msg(`No hay ${L}. Pierdes ${fmt(COSTE_VOCAL)} y el turno.`,'bad');
+    await fbUpd(roomPath(),{seq,used,['money/'+ON.myId]:newM,turn:nextIdx(),
+      last:{seq,type:'vocfail',pid:ON.myId,l:L}});
+    await sleep(1100);S.phase='sync';ON.busy=false;return;
+  }
+  S.revealed.add(L);
+  msg(`${n} × ${L}.`,'hot');
+  await fbUpd(roomPath(),{seq,used,revealed:[...S.revealed].join(''),
+    ['money/'+ON.myId]:newM,last:{seq,type:'voc',pid:ON.myId,l:L,n}});
+  const t=revealLetter(L);await sleep(t+150);
+  if(lettersLeft().size===0){await onlineWinRound();ON.busy=false;return;}
+  S.phase='idle';ON.busy=false;setActions(true);
+}
+async function onlineSolveFail(){
+  const seq=bumpSeq();
+  await fbUpd(roomPath(),{seq,turn:nextIdx(),last:{seq,type:'solvefail',pid:ON.myId}});
+  msg('Fallo al resolver. Pierdes el turno.','bad');
+  await sleep(900);S.phase='sync';ON.busy=false;
+}
+async function onlineWinRound(){
+  const d=ON.data;
+  const myM=S.players[d.order.indexOf(ON.myId)].m;
+  const gan=Math.max(myM,BANCA_MINIMA);
+  const newB=((d.bank&&d.bank[ON.myId])||0)+gan;
+  for(const ch of S.txt)if(esLetra(ch))S.revealed.add(ch);
+  document.querySelectorAll('.cell[data-ch]').forEach(c=>c.classList.add('rev'));
+  Snd.win();
+  const seq=bumpSeq();
+  await fbUpd(roomPath(),{seq,state:'roundend',revealed:[...S.revealed].join(''),
+    roundWin:{pid:ON.myId,amount:gan},['bank/'+ON.myId]:newB,
+    last:{seq,type:'solvewin',pid:ON.myId}});
+  S.phase='sync';
+}
 
 /* ================= PWA: SW + instalación ================= */
 if('serviceWorker' in navigator){

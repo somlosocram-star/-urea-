@@ -1,0 +1,27 @@
+================================================================
+  ÁUREA — Reglas de seguridad de Firebase Realtime Database
+================================================================
+
+BUENA NOTICIA: si ya tienes la regla comodín bajo "g" que cubre
+/g/{gameId}/rooms/{code} (la que usan Cábala, Galera, Duo, etc.),
+NO tienes que tocar nada. Áurea escribe en g/aurea/rooms/{code}
+y queda cubierta automáticamente.
+
+Solo si NO tuvieras esa regla genérica, añade dentro de "rules",
+junto a lo que ya tengas (ojo con la coma del bloque anterior):
+
+    "g": {
+      "aurea": {
+        "rooms": {
+          "$code": {
+            ".read": true,
+            ".write": true,
+            ".validate": "$code.length == 4"
+          }
+        }
+      }
+    }
+
+RECORDATORIO (aprendido en Duo): la regla debe estar al nivel de
+$code, no solo en subnodos, o las escrituras multi-ruta fallarán
+en silencio.
