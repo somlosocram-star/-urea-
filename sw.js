@@ -2,7 +2,7 @@
 // HTML: network-first (para no servir versiones viejas)
 // Estáticos: cache-first
 // Música: NO se precachea; se cachea perezosamente al primer uso
-const CACHE = 'aurea-v5';
+const CACHE = 'aurea-v6';
 const CORE = [
   './',
   'index.html',
@@ -32,10 +32,10 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
 
-  // documentos: red primero, caché de respaldo
+  // documentos: red primero SALTANDO la caché HTTP (GitHub Pages cachea ~10 min)
   if (req.mode === 'navigate' || req.destination === 'document') {
     e.respondWith(
-      fetch(req).then(r => {
+      fetch(req, { cache: 'no-store' }).then(r => {
         const cp = r.clone();
         caches.open(CACHE).then(c => c.put(req, cp));
         return r;

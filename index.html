@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.8</title>
+<title>Áurea · v0.8.1</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -371,7 +371,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.8</div>
+<div class="ver" id="ver">ÁUREA · V0.8.1</div>
 
 <script>
 'use strict';
@@ -1770,7 +1770,17 @@ async function onlineWinRound(){
 
 /* ================= PWA: SW + instalación ================= */
 if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js',{updateViaCache:'none'})
+      .then(reg=>{reg.update().catch(()=>{});})
+      .catch(()=>{});
+  });
+  // cuando un SW nuevo toma el control (skipWaiting), recargar una vez para servir la versión nueva
+  let swReloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(swReloaded||!navigator.serviceWorker.controller)return;
+    swReloaded=true;location.reload();
+  });
 }
 let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{
