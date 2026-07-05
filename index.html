@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.5</title>
+<title>Áurea · v0.6</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -155,10 +155,27 @@ html.pre-light #app-splash{background:#f3f2ee}
 
 /* acciones + mensaje */
 .g-foot{flex:0 0 auto;width:100%;padding:.3rem .8rem max(.7rem,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:.45rem}
-.actions{display:flex;gap:.5rem;justify-content:center;width:100%;max-width:430px}
-.actions .btn{min-width:0;flex:1 1 0;padding:.75rem .3rem;font-size:.6rem;letter-spacing:.2em}
-.actions .btn b{display:block;font-size:.48rem;letter-spacing:.15em;color:inherit;opacity:.65;margin-top:.15rem}
+.actions{display:flex;justify-content:space-between;width:100%;max-width:430px}
 .actions.hidden{visibility:hidden}
+.btn-gold{
+  min-width:130px;padding:.85rem 1.2rem;border-radius:12px;cursor:pointer;outline:none;
+  font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:.68rem;letter-spacing:.28em;text-transform:uppercase;
+  color:#2a1e03;border:1px solid #6e5107;
+  background:linear-gradient(180deg,#f3dc85 0%,#d9ab1e 42%,#a37c0e 78%,#8a6a10 100%);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.65),inset 0 -3px 5px rgba(0,0,0,.32),0 3px 7px rgba(0,0,0,.45);
+  text-shadow:0 1px 0 rgba(255,244,200,.5);
+  transition:transform .08s,box-shadow .12s,filter .2s;
+}
+.btn-gold:active{transform:translateY(2px);box-shadow:inset 0 2px 6px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.3)}
+.btn-gold:disabled{filter:grayscale(.75) brightness(.7);opacity:.55;cursor:default}
+#hub-btn{position:absolute;left:50%;top:50%;width:30%;height:30%;transform:translate(-50%,-50%);border-radius:50%;border:none;background:transparent;cursor:pointer;outline:none;z-index:4;-webkit-tap-highlight-color:transparent}
+#hub-btn:disabled{cursor:default}
+#hub-btn.ready{animation:hubGlow 1.9s ease-in-out infinite}
+#hub-btn.ready:active{animation:none;box-shadow:0 0 0 5px rgba(212,160,23,.35),0 0 30px 10px rgba(212,160,23,.6)}
+@keyframes hubGlow{
+  0%,100%{box-shadow:0 0 0 0 rgba(212,160,23,0),0 0 10px 2px rgba(212,160,23,.22)}
+  50%{box-shadow:0 0 0 4px rgba(212,160,23,.28),0 0 28px 9px rgba(212,160,23,.6)}
+}
 #msg{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.05rem;color:var(--muted);min-height:1.3em;line-height:1.2;transition:color .3s}
 #msg.hot{color:var(--amber)}
 #msg.bad{color:var(--bad)}
@@ -248,8 +265,10 @@ html.pre-light #app-splash{background:#f3f2ee}
             <circle cx="150" cy="150" r="43" fill="url(#rim-g)"/>
             <image href="aurea-hub.png" x="110" y="110" width="80" height="80" clip-path="url(#hub-clip)"/>
             <circle cx="150" cy="150" r="40" fill="none" stroke="#6e5107" stroke-width="1"/>
+            <circle cx="150" cy="150" r="42.2" fill="none" stroke="rgba(255,244,200,.55)" stroke-width=".9"/>
           </g>
         </svg>
+        <button id="hub-btn" aria-label="Girar la ruleta"></button>
       </div>
     </div>
     <div id="stage-kb">
@@ -261,9 +280,8 @@ html.pre-light #app-splash{background:#f3f2ee}
   <div class="g-foot">
     <div id="msg">&nbsp;</div>
     <div class="actions" id="actions">
-      <button class="btn" id="a-spin">Girar</button>
-      <button class="btn" id="a-vowel">Vocal<b>250 €</b></button>
-      <button class="btn" id="a-solve">Resolver</button>
+      <button class="btn-gold" id="a-vowel">Vocal</button>
+      <button class="btn-gold" id="a-solve">Resolver</button>
     </div>
   </div>
 </section>
@@ -292,15 +310,15 @@ html.pre-light #app-splash{background:#f3f2ee}
 <div id="tut">
   <div class="tut-card">
     <h2>Cómo se juega</h2>
-    <p><b>Gira</b> la ruleta y elige una consonante. Si está en el panel, ganas su valor por cada aparición y sigues jugando.</p>
-    <p><b>Compra una vocal</b> por 250 €. Si no está en el panel, pierdes el turno.</p>
+    <p><b>Pulsa el medallón</b> (brilla cuando puedes) para girar la ruleta y elige una consonante. Si está en el panel, ganas su valor por cada aparición y sigues jugando.</p>
+    <p><b>Vocal</b>: compra una por 250 €. Si no está en el panel, pierdes el turno.</p>
     <p><b>Resuelve</b> cuando creas saber la frase: rellena las letras ocultas una a una. Un fallo y pierdes el turno.</p>
     <p>Cuidado con la <b>Quiebra</b>: pierdes todo el dinero de la ronda. Quien resuelve el panel se lleva su dinero a la <b>banca</b>. Tres rondas; gana la banca más alta.</p>
     <button class="btn" id="tut-close">Entendido</button>
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.5</div>
+<div class="ver" id="ver">ÁUREA · V0.6</div>
 
 <script>
 'use strict';
@@ -850,14 +868,15 @@ function msg(t,cls){
   m.className='';if(cls)m.classList.add(cls);
 }
 function setActions(on){
-  const a=$('actions');
+  const a=$('actions'),hub=$('hub-btn');
   a.classList.toggle('hidden',!on);
+  const puedeGirar=on&&[...CONSONANTES].some(c=>!S.used.has(c))&&quedanConsOcultas();
+  hub.disabled=!puedeGirar;
+  hub.classList.toggle('ready',puedeGirar);
   if(on){
     const p=S.players[S.turn];
     const vocQuedan=[...VOCALES].some(v=>!S.used.has(v));
     $('a-vowel').disabled=p.m<COSTE_VOCAL||!vocQuedan;
-    const consQuedan=[...CONSONANTES].some(c=>!S.used.has(c));
-    $('a-spin').disabled=!consQuedan||!quedanConsOcultas();
   }
 }
 
@@ -902,7 +921,7 @@ function beginTurn(){
   else{
     S.phase='idle';setActions(true);
     if(!quedanConsOcultas())msg('Solo quedan vocales: compra o resuelve.','hot');
-    else msg('Tu turno. Gira, compra o resuelve.');
+    else msg('Tu turno. Pulsa el medallón, compra o resuelve.');
   }
 }
 function nextTurn(){
@@ -917,7 +936,7 @@ async function loseTurn(reason){
 }
 
 /* --- acciones del jugador --- */
-$('a-spin').addEventListener('click',async()=>{
+$('hub-btn').addEventListener('click',async()=>{
   if(S.phase!=='idle')return;
   S.phase='spinning';setActions(false);msg('Girando…');
   const w=await spinWheel();
