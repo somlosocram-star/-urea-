@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0c">
 <meta name="description" content="Áurea — gira la ruleta, compra vocales y resuelve el panel.">
-<title>Áurea · v0.2</title>
+<title>Áurea · v0.3</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -126,7 +126,7 @@ html.pre-light #app-splash{background:#f3f2ee}
 /* escenario central: ruleta <-> teclado */
 .stage{flex:1 1 auto;width:100%;display:flex;align-items:center;justify-content:center;min-height:0;position:relative;padding:.2rem 0}
 #stage-wheel{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2rem;width:100%;height:100%}
-.wheel-box{position:relative;width:min(60vw,42vh,290px);aspect-ratio:1}
+.wheel-box{position:relative;width:min(80vw,48vh,340px);aspect-ratio:1}
 .wheel-box .pointer{position:absolute;top:-7px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:18px solid var(--amber);filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));z-index:3;transform-origin:50% 0}
 .wheel-box .pointer.flex{animation:pflex .13s ease-out both}
 @keyframes pflex{0%{transform:translateX(-50%) rotate(-16deg)}100%{transform:translateX(-50%) rotate(0deg)}}
@@ -291,7 +291,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.2</div>
+<div class="ver" id="ver">ÁUREA · V0.3</div>
 
 <script>
 'use strict';
@@ -380,9 +380,14 @@ function wrapPanel(t){
 
 /* ================= AUDIO (WebAudio, sin assets) ================= */
 const Snd=(()=>{
-  let ctx=null,muted=false;
+  let ctx=null,muted=false,tickBuf=null;
   try{muted=localStorage.getItem('aurea_sound')==='off';}catch(e){}
   function ac(){if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();return ctx;}
+  // click real de trinquete (extraído del giro de ruleta); fallback sintético
+  fetch('tick.wav').then(r=>r.arrayBuffer()).then(b=>{
+    if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();
+    return ctx.decodeAudioData(b);
+  }).then(buf=>{tickBuf=buf;}).catch(()=>{});
   function tone(f,dur,type='sine',vol=.14,when=0){
     if(muted)return;const c=ac();const t=c.currentTime+when;
     const o=c.createOscillator(),g=c.createGain();
@@ -393,7 +398,15 @@ const Snd=(()=>{
   return{
     get muted(){return muted;},
     toggle(){muted=!muted;try{localStorage.setItem('aurea_sound',muted?'off':'on');}catch(e){}return muted;},
-    tick(){tone(1500,.03,'square',.05);},
+    tick(){
+      if(muted)return;
+      if(tickBuf){
+        const c=ac();const s=c.createBufferSource();const g=c.createGain();
+        s.buffer=tickBuf;s.playbackRate.value=.92+Math.random()*.16;
+        g.gain.value=.8;
+        s.connect(g).connect(c.destination);s.start();
+      }else tone(1500,.03,'square',.05);
+    },
     ding(){tone(880,.25,'sine',.12);tone(1320,.35,'sine',.08,.06);},
     coin(){tone(988,.1,'triangle',.12);tone(1319,.22,'triangle',.1,.08);},
     buzz(){tone(140,.4,'sawtooth',.12);},
@@ -402,6 +415,36 @@ const Snd=(()=>{
     key(){tone(700,.04,'square',.05);}
   };
 })();
+
+/* ===== música (Suno): Intro en menús; en juego alternan las otras dos ===== */
+const Music=(()=>{
+  const menu=new Audio('Intro__1_.mp3');menu.loop=true;menu.volume=.45;
+  const game=[new Audio('Caminos_de_Fuego.mp3'),new Audio('Puerta_de_madera.mp3')];
+  game.forEach(a=>a.volume=.38);
+  let mode='none',gi=Math.floor(Math.random()*2);
+  game.forEach((a,i)=>a.addEventListener('ended',()=>{
+    if(mode!=='game'||Snd.muted)return;
+    gi=1-i;game[gi].currentTime=0;game[gi].play().catch(()=>{});
+  }));
+  function stopAll(){menu.pause();game.forEach(a=>a.pause());}
+  function play(){
+    if(Snd.muted)return;
+    if(mode==='menu'){menu.play().catch(()=>{});}
+    else if(mode==='game'){game[gi].play().catch(()=>{});}
+  }
+  return{
+    setMode(m){
+      if(m===mode){play();return;}
+      mode=m;stopAll();
+      if(m==='game'){gi=Math.floor(Math.random()*2);game[gi].currentTime=0;}
+      if(m==='menu')menu.currentTime=0;
+      play();
+    },
+    refresh(){if(Snd.muted)stopAll();else play();}
+  };
+})();
+// arranque tras el primer gesto (política de autoplay del navegador)
+document.addEventListener('pointerdown',function first(){Music.refresh();document.removeEventListener('pointerdown',first);});
 
 /* ================= ESTADO ================= */
 const S={
@@ -429,7 +472,7 @@ const S={
 (function initSound(){
   const b=$('sound-toggle');
   if(Snd.muted)b.classList.add('muted');
-  b.addEventListener('click',()=>{b.classList.toggle('muted',Snd.toggle());});
+  b.addEventListener('click',()=>{b.classList.toggle('muted',Snd.toggle());Music.refresh();});
 })();
 $('help-btn').addEventListener('click',()=>$('tut').classList.add('visible'));
 $('tut-close').addEventListener('click',()=>$('tut').classList.remove('visible'));
@@ -440,6 +483,7 @@ function show(id){
   $(id).classList.add('visible');
   document.body.classList.toggle('in-game',id==='screen-game');
   $('ver').style.display=(id==='screen-home')?'block':'none';
+  Music.setMode(id==='screen-game'?'game':'menu');
 }
 
 /* ================= RULETA (SVG) ================= */
@@ -568,6 +612,9 @@ function revealRatio(){
   for(const ch of S.txt)if(esLetra(ch)){tot++;if(S.revealed.has(ch))rev++;}
   return tot?rev/tot:0;
 }
+function quedanConsOcultas(){
+  return [...lettersLeft()].some(ch=>CONSONANTES.includes(ch));
+}
 
 /* ================= TECLADO ================= */
 const KB_LAYOUT=['QWERTYUIOP','ASDFGHJKLÑ','ZXCVBNM'];
@@ -631,7 +678,7 @@ function setActions(on){
     const vocQuedan=[...VOCALES].some(v=>!S.used.has(v));
     $('a-vowel').disabled=p.m<COSTE_VOCAL||!vocQuedan;
     const consQuedan=[...CONSONANTES].some(c=>!S.used.has(c));
-    $('a-spin').disabled=!consQuedan;
+    $('a-spin').disabled=!consQuedan||!quedanConsOcultas();
   }
 }
 
@@ -673,7 +720,11 @@ function beginTurn(){
   renderChips();hideKB();
   const p=S.players[S.turn];
   if(p.cpu){setActions(false);S.phase='cpu';cpuTurn();}
-  else{S.phase='idle';setActions(true);msg('Tu turno. Gira, compra o resuelve.');}
+  else{
+    S.phase='idle';setActions(true);
+    if(!quedanConsOcultas())msg('Solo quedan vocales: compra o resuelve.','hot');
+    else msg('Tu turno. Gira, compra o resuelve.');
+  }
 }
 function nextTurn(){
   S.turn=(S.turn+1)%S.players.length;
@@ -846,7 +897,8 @@ async function cpuTurn(){
     }
     // ¿vocal?
     const vocalesLibres=[...VOCALES].filter(v=>!S.used.has(v));
-    if(p.m>=COSTE_VOCAL&&vocalesLibres.length&&Math.random()<.35){
+    const soloVocales=!quedanConsOcultas();
+    if(vocalesLibres.length&&p.m>=COSTE_VOCAL&&(soloVocales||Math.random()<.35)){
       let v;
       const dentro=vocalesLibres.filter(x=>left.has(x));
       if(dentro.length&&Math.random()<p.skill)v=pick(dentro);
@@ -859,7 +911,8 @@ async function cpuTurn(){
       await sleep(700);
       continue;
     }
-    // girar
+    // girar (prohibido si solo quedan vocales)
+    if(soloVocales){await cpuSolve(pi);return;}
     const consLibres=[...CONSONANTES].filter(c=>!S.used.has(c));
     if(!consLibres.length){await cpuSolve(pi);return;}
     msg(`${p.n} gira la ruleta…`);
