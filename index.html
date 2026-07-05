@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.11</title>
+<title>Áurea · v0.11.1</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -120,7 +120,7 @@ html.pre-light #app-splash{background:#f3f2ee}
 @keyframes pshake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
 
 /* jugadores */
-.chips{flex:0 0 auto;display:flex;gap:.4rem;justify-content:center;width:100%;padding:.8rem .6rem .25rem}
+.chips{flex:0 0 auto;display:flex;gap:.4rem;justify-content:center;width:100%;padding:2.7rem .6rem .25rem}
 .chip{flex:1 1 0;max-width:130px;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:.4rem .3rem .35rem;display:flex;flex-direction:column;align-items:center;gap:.1rem;transition:border-color .25s,box-shadow .25s}
 .chip.on{border-color:var(--amber);box-shadow:0 0 14px rgba(212,160,23,.22)}
 .chip .c-nm{font-family:'IBM Plex Mono',monospace;font-size:.52rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
@@ -131,10 +131,8 @@ html.pre-light #app-splash{background:#f3f2ee}
 .chip.bump .c-m{animation:mbump .45s ease}
 @keyframes mbump{0%{transform:scale(1)}40%{transform:scale(1.22);color:var(--amber)}100%{transform:scale(1)}}
 .chip{position:relative;overflow:visible}
-.c-timer{display:none;position:absolute;top:-12px;left:50%;transform:translateX(-50%);width:24px;height:24px;z-index:5}
+.c-timer{display:none;position:absolute;top:-42px;left:50%;transform:translateX(-50%);width:36px;height:36px;border-radius:50%;border:2px solid #8a6a10;background:var(--amber);box-shadow:0 2px 7px rgba(0,0,0,.35),inset 0 1px 1px rgba(255,244,200,.5);z-index:5}
 .chip.timing .c-timer{display:block}
-.c-timer .tr-base{fill:var(--panel);stroke:var(--amber);stroke-width:3}
-.c-timer .tr-arc{fill:none;stroke:var(--bad);stroke-width:3;stroke-dasharray:56.55;stroke-dashoffset:56.55;transform:rotate(-90deg);transform-origin:center}
 
 /* escenario central: ruleta <-> teclado */
 .stage{flex:1 1 auto;width:100%;display:flex;align-items:center;justify-content:center;min-height:0;position:relative;padding:.2rem 0}
@@ -386,7 +384,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.11</div>
+<div class="ver" id="ver">ÁUREA · V0.11.1</div>
 
 <script>
 'use strict';
@@ -1471,7 +1469,7 @@ function renderChips(){
   S.players.forEach((p,i)=>{
     const c=document.createElement('div');
     c.className='chip'+(i===S.turn?' on':'')+(p.off?' off':'');c.id='chip-'+i;
-    c.innerHTML=`<div class="c-timer"><svg viewBox="0 0 24 24"><circle class="tr-base" cx="12" cy="12" r="9"/><circle class="tr-arc" cx="12" cy="12" r="9"/></svg></div><div class="c-nm">${escapeHtml(p.n)}</div><div class="c-m">${fmt(p.m)}</div><div class="c-b">banca <b>${fmt(p.b)}</b></div>`;
+    c.innerHTML=`<div class="c-timer"></div><div class="c-nm">${escapeHtml(p.n)}</div><div class="c-m">${fmt(p.m)}</div><div class="c-b">banca <b>${fmt(p.b)}</b></div>`;
     box.appendChild(c);
   });
 }
@@ -1500,7 +1498,7 @@ function setActions(on){
 }
 
 /* ================= SORTEO Y RELOJ DE TURNO ================= */
-const TIMER_MS=30000,RING_C=56.55;
+const TIMER_MS=30000;
 const Turno={raf:null,t0:0,idx:-1,on:false};
 function timerReset(idx){
   timerStop();
@@ -1518,8 +1516,8 @@ function timerLoop(){
   const chip=$('chip-'+Turno.idx);
   if(chip){
     chip.classList.add('timing');
-    const arc=chip.querySelector('.tr-arc');
-    if(arc)arc.style.strokeDashoffset=RING_C*(1-p);
+    const disc=chip.querySelector('.c-timer');
+    if(disc)disc.style.background=`conic-gradient(var(--bad) ${(p*360).toFixed(1)}deg, var(--amber) 0deg)`;
   }
   if(p>=1){timerStop();onTurnTimeout();return;}
   Turno.raf=requestAnimationFrame(timerLoop);
