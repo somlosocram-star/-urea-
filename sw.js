@@ -2,7 +2,7 @@
 // HTML: network-first (para no servir versiones viejas)
 // Estáticos: cache-first
 // Música: NO se precachea; se cachea perezosamente al primer uso
-const CACHE = 'aurea-v6';
+const CACHE = 'aurea-v8';
 const CORE = [
   './',
   'index.html',
