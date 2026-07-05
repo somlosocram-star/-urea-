@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.10</title>
+<title>Áurea · v0.11</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -120,16 +120,21 @@ html.pre-light #app-splash{background:#f3f2ee}
 @keyframes pshake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
 
 /* jugadores */
-.chips{flex:0 0 auto;display:flex;gap:.45rem;justify-content:center;width:100%;padding:.25rem .7rem}
+.chips{flex:0 0 auto;display:flex;gap:.4rem;justify-content:center;width:100%;padding:.8rem .6rem .25rem}
 .chip{flex:1 1 0;max-width:130px;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:.4rem .3rem .35rem;display:flex;flex-direction:column;align-items:center;gap:.1rem;transition:border-color .25s,box-shadow .25s}
 .chip.on{border-color:var(--amber);box-shadow:0 0 14px rgba(212,160,23,.22)}
 .chip .c-nm{font-family:'IBM Plex Mono',monospace;font-size:.52rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
 .chip.on .c-nm{color:var(--amber)}
-.chip .c-m{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.02rem;line-height:1}
+.chip .c-m{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:clamp(.78rem,3.4vw,1.02rem);line-height:1}
 .chip .c-b{font-family:'IBM Plex Mono',monospace;font-size:.5rem;color:var(--muted);letter-spacing:.05em}
 .chip .c-b b{color:var(--amber);font-weight:700}
 .chip.bump .c-m{animation:mbump .45s ease}
 @keyframes mbump{0%{transform:scale(1)}40%{transform:scale(1.22);color:var(--amber)}100%{transform:scale(1)}}
+.chip{position:relative;overflow:visible}
+.c-timer{display:none;position:absolute;top:-12px;left:50%;transform:translateX(-50%);width:24px;height:24px;z-index:5}
+.chip.timing .c-timer{display:block}
+.c-timer .tr-base{fill:var(--panel);stroke:var(--amber);stroke-width:3}
+.c-timer .tr-arc{fill:none;stroke:var(--bad);stroke-width:3;stroke-dasharray:56.55;stroke-dashoffset:56.55;transform:rotate(-90deg);transform-origin:center}
 
 /* escenario central: ruleta <-> teclado */
 .stage{flex:1 1 auto;width:100%;display:flex;align-items:center;justify-content:center;min-height:0;position:relative;padding:.2rem 0}
@@ -214,6 +219,10 @@ html.pre-light #app-splash{background:#f3f2ee}
 .guest-waiting{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.05rem;color:var(--muted);margin-bottom:1.2rem}
 .chip.off{opacity:.4}
 #btn-skip{font-size:.55rem;padding:.5rem 1rem}
+.rounds-row{display:flex;gap:.5rem;margin-bottom:1.4rem;align-items:center}
+.rounds-row .lbl{font-family:'IBM Plex Mono',monospace;font-size:.55rem;letter-spacing:.3em;color:var(--muted)}
+.rbtn{width:46px;height:40px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1rem;border-radius:8px;cursor:pointer;outline:none}
+.rbtn.on{border-color:var(--amber);color:var(--amber);box-shadow:0 0 10px rgba(212,160,23,.25)}
 
 /* tutorial */
 #tut{position:fixed;inset:0;z-index:800;background:color-mix(in srgb,var(--bg) 94%,transparent);display:none;align-items:center;justify-content:center;padding:1.5rem}
@@ -330,6 +339,11 @@ html.pre-light #app-splash{background:#f3f2ee}
 <section id="screen-lobby" class="screen">
   <div class="g-eyebrow" style="letter-spacing:.5em">CÓDIGO DE SALA</div>
   <div class="room-code mono" id="room-code">····</div>
+  <div class="rounds-row"><span class="lbl">RONDAS</span>
+    <button class="rbtn" data-r="3">3</button>
+    <button class="rbtn" data-r="5">5</button>
+    <button class="rbtn" data-r="7">7</button>
+  </div>
   <div class="lobby-players" id="lobby-players"></div>
   <div class="guest-waiting" id="lobby-wait" style="display:none">esperando al anfitrión…</div>
   <div class="btn-row">
@@ -366,12 +380,13 @@ html.pre-light #app-splash{background:#f3f2ee}
     <p><b>Pulsa el medallón</b> (brilla cuando puedes) para girar la ruleta y elige una consonante. Si está en el panel, ganas su valor por cada aparición y sigues jugando.</p>
     <p><b>Vocal</b>: compra una por 250 €. Si no está en el panel, pierdes el turno.</p>
     <p><b>Resuelve</b> cuando creas saber la frase: rellena las letras ocultas una a una. Un fallo y pierdes el turno.</p>
+    <p><b>Reloj</b>: tienes 30 segundos por decisión (el anillo sobre tu nombre se tiñe de rojo). Cada letra puesta, compra o intento de resolución lo reinicia. Si se agota, pierdes el turno.</p>
     <p>Cuidado con la <b>Quiebra</b>: pierdes todo el dinero de la ronda. Casillas especiales: <b>×2</b> duplica tu dinero de ronda y sigues jugando; <b>Vocal gratis</b> te regala una vocal sin coste. Quien resuelve el panel se lleva su dinero a la <b>banca</b>. Tres rondas; gana la banca más alta.</p>
     <button class="btn" id="tut-close">Entendido</button>
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.10</div>
+<div class="ver" id="ver">ÁUREA · V0.11</div>
 
 <script>
 'use strict';
@@ -637,7 +652,7 @@ const PANELES=[
 ["CUENTOS","LA SIRENITA"],
 ["CUENTOS","EL TRAJE NUEVO DEL EMPERADOR"],
 ["CUENTOS","PULGARCITO"],
-["CIUDADES","ROMA LA CIUDAD ETERNA"],
+["CIUDADES","ROMA, LA CIUDAD ETERNA"],
 ["CIUDADES","NUEVA YORK"],
 ["CIUDADES","BUENOS AIRES"],
 ["CIUDADES","RIO DE JANEIRO"],
@@ -648,10 +663,10 @@ const PANELES=[
 ["CIUDADES","MARRAKECH"],
 ["CIUDADES","SAMARCANDA"],
 ["CIUDADES","LA HABANA VIEJA"],
-["CIUDADES","PRAGA LA CIUDAD DORADA"],
+["CIUDADES","PRAGA, LA CIUDAD DORADA"],
 ["CIUDADES","VENECIA Y SUS GONDOLAS"],
-["CIUDADES","ATENAS CUNA DE LA DEMOCRACIA"],
-["CIUDADES","TOKIO LA CAPITAL DE JAPON"],
+["CIUDADES","ATENAS, CUNA DE LA DEMOCRACIA"],
+["CIUDADES","TOKIO, LA CAPITAL DE JAPON"],
 ["REFRANES","A RIO REVUELTO GANANCIA DE PESCADORES"],
 ["REFRANES","MAS SABE EL DIABLO POR VIEJO QUE POR DIABLO"],
 ["REFRANES","EN BOCA CERRADA NO ENTRAN MOSCAS"],
@@ -732,7 +747,7 @@ const PANELES=[
 ["PERSONAJES","CRISTOBAL COLON"],
 ["PERSONAJES","JUANA DE ARCO"],
 ["PERSONAJES","NAPOLEON BONAPARTE"],
-["PERSONAJES","CLEOPATRA REINA DE EGIPTO"],
+["PERSONAJES","CLEOPATRA, REINA DE EGIPTO"],
 ["PERSONAJES","ISABEL LA CATOLICA"],
 ["PERSONAJES","TERESA DE CALCUTA"],
 ["PERSONAJES","MARIE CURIE"],
@@ -1222,7 +1237,7 @@ const S={
   round:0,rounds:3,turn:0,phase:'menu',
   cat:'',txt:'',rows:[],revealed:new Set(),used:new Set(),
   pend:0,solveIdx:0,solveList:[],solveTyped:0,
-  wheelRot:0,cpuAbort:false,panelsUsed:[],gen:0,
+  wheelRot:0,cpuAbort:false,panelsUsed:[],gen:0,first:0,
 };
 
 /* ================= TEMA / CONTROLES ================= */
@@ -1456,7 +1471,7 @@ function renderChips(){
   S.players.forEach((p,i)=>{
     const c=document.createElement('div');
     c.className='chip'+(i===S.turn?' on':'')+(p.off?' off':'');c.id='chip-'+i;
-    c.innerHTML=`<div class="c-nm">${escapeHtml(p.n)}</div><div class="c-m">${fmt(p.m)}</div><div class="c-b">banca <b>${fmt(p.b)}</b></div>`;
+    c.innerHTML=`<div class="c-timer"><svg viewBox="0 0 24 24"><circle class="tr-base" cx="12" cy="12" r="9"/><circle class="tr-arc" cx="12" cy="12" r="9"/></svg></div><div class="c-nm">${escapeHtml(p.n)}</div><div class="c-m">${fmt(p.m)}</div><div class="c-b">banca <b>${fmt(p.b)}</b></div>`;
     box.appendChild(c);
   });
 }
@@ -1484,6 +1499,66 @@ function setActions(on){
   }
 }
 
+/* ================= SORTEO Y RELOJ DE TURNO ================= */
+const TIMER_MS=30000,RING_C=56.55;
+const Turno={raf:null,t0:0,idx:-1,on:false};
+function timerReset(idx){
+  timerStop();
+  Turno.idx=idx;Turno.t0=performance.now();Turno.on=true;
+  timerLoop();
+}
+function timerStop(){
+  Turno.on=false;
+  if(Turno.raf){cancelAnimationFrame(Turno.raf);Turno.raf=null;}
+  document.querySelectorAll('.chip.timing').forEach(c=>c.classList.remove('timing'));
+}
+function timerLoop(){
+  if(!Turno.on)return;
+  const p=Math.min(1,(performance.now()-Turno.t0)/TIMER_MS);
+  const chip=$('chip-'+Turno.idx);
+  if(chip){
+    chip.classList.add('timing');
+    const arc=chip.querySelector('.tr-arc');
+    if(arc)arc.style.strokeDashoffset=RING_C*(1-p);
+  }
+  if(p>=1){timerStop();onTurnTimeout();return;}
+  Turno.raf=requestAnimationFrame(timerLoop);
+}
+async function onTurnTimeout(){
+  // solo el dueño del turno ejecuta el castigo; el resto ve el anillo
+  const enJuego=['idle','cons','voc','solve'];
+  if(ON.active){
+    if(!myTurn())return;
+    if(!enJuego.includes(S.phase)){setTimeout(()=>{if(myTurn())onTurnTimeout();},800);return;}
+    if(S.phase==='solve')abortSolve();
+    S.freeVowel=false;hideKB();S.phase='busy';ON.busy=true;
+    Snd.buzz();msg('Tiempo agotado. Pierdes el turno.','bad');
+    const seq=bumpSeq();
+    await fbUpd(roomPath(),{seq,turn:nextIdx(),last:{seq,type:'timeout',pid:ON.myId}});
+    await sleep(900);S.phase='sync';ON.busy=false;
+    return;
+  }
+  const p=S.players[S.turn];
+  if(!p||p.cpu)return;
+  if(!enJuego.includes(S.phase)){setTimeout(()=>onTurnTimeout(),800);return;}
+  if(S.phase==='solve')abortSolve();
+  S.freeVowel=false;hideKB();
+  loseTurn('Tiempo agotado. Pierdes el turno.');
+}
+async function sorteoTurno(target){
+  timerStop();
+  const n=S.players.length;
+  msg('Sorteo del primer turno…');
+  const total=n*3+target;
+  for(let k=0;k<=total;k++){
+    S.turn=k%n;renderChips();Snd.tick();
+    await sleep(90+Math.pow(k/total,2)*280);
+  }
+  S.turn=target;renderChips();Snd.ding();
+  msg(`Empieza ${S.players[target].n}.`,'hot');
+  await sleep(1000);
+}
+
 /* ================= FLUJO DE PARTIDA ================= */
 function getHist(){
   try{
@@ -1494,20 +1569,21 @@ function getHist(){
 }
 function setHist(h){try{localStorage.setItem('aurea_hist',JSON.stringify(h.slice(-600)));}catch(e){}}
 function addHist(t){const h=getHist();if(!h.includes(t)){h.push(t);setHist(h);}}
-function pickPanels(extraExclude){
+function pickPanels(extraExclude,count){
+  count=count||S.rounds;
   const hist=getHist();
   const ex=new Set(hist);
   (extraExclude||[]).forEach(t=>ex.add(t));
   let pool=PANELES.map((_,i)=>i).filter(i=>!ex.has(PANELES[i][1]));
-  if(pool.length<S.rounds){
+  if(pool.length<count){
     // pool agotado: relajar a lo más reciente de cada historial
     const rec=new Set(hist.slice(-60));
     (extraExclude||[]).slice(-60).forEach(t=>rec.add(t));
     pool=PANELES.map((_,i)=>i).filter(i=>!rec.has(PANELES[i][1]));
-    if(pool.length<S.rounds)pool=PANELES.map((_,i)=>i);
+    if(pool.length<count)pool=PANELES.map((_,i)=>i);
   }
   const sel=[];
-  while(sel.length<S.rounds){
+  while(sel.length<count){
     const i=pick(pool);pool=pool.filter(x=>x!==i);sel.push(i);
   }
   sel.forEach(i=>addHist(PANELES[i][1]));
@@ -1519,26 +1595,28 @@ function newGame(){
   show('screen-game');
   startRound();
 }
-function startRound(){
-  S.gen++;
+async function startRound(){
+  S.gen++;const gen=S.gen;
   const [cat,txt]=PANELES[S.panelsUsed[S.round]];
   S.cat=cat;S.txt=txt;S.rows=wrapPanel(txt);
   S.revealed=new Set();S.used=new Set();
   S.players.forEach(p=>p.m=0);
-  S.turn=S.round%S.players.length;
+  if(S.round===0)S.first=Math.floor(Math.random()*S.players.length);
+  S.turn=(S.first+S.round)%S.players.length;
   S.phase='idle';
   $('g-round').textContent=`RONDA ${S.round+1} / ${S.rounds}`;
   $('g-cat').textContent=cat.charAt(0)+cat.slice(1).toLowerCase();
   renderPanel();renderChips();buildWheel();hideKB();
   msg('');
+  if(S.round===0){await sorteoTurno(S.turn);if(gen!==S.gen)return;}
   beginTurn();
 }
 function beginTurn(){
   renderChips();hideKB();
   const p=S.players[S.turn];
-  if(p.cpu){setActions(false);S.phase='cpu';cpuTurn();}
+  if(p.cpu){setActions(false);timerStop();S.phase='cpu';cpuTurn();}
   else{
-    S.phase='idle';setActions(true);
+    S.phase='idle';setActions(true);timerReset(S.turn);
     if(!quedanConsOcultas())msg('Solo quedan vocales: compra o resuelve.','hot');
     else msg('Tu turno. Pulsa el medallón, compra o resuelve.');
   }
@@ -1564,7 +1642,7 @@ $('hub-btn').addEventListener('click',async()=>{
 });
 $('a-vowel').addEventListener('click',()=>{
   if(S.phase!=='idle')return;
-  S.phase='voc';setActions(false);showKB('voc');
+  S.phase='voc';setActions(false);showKB('voc');timerReset(S.turn);
   msg(`Vocal por ${fmt(COSTE_VOCAL)}. Si falla, pierdes turno.`);
 });
 $('a-solve').addEventListener('click',()=>{
@@ -1606,14 +1684,14 @@ async function resolveWedge(w,pi){
       ?(p.cpu?`¡×2! ${p.n} duplica su dinero: ${fmt(p.m)}.`:`¡×2! Duplicas tu dinero: ${fmt(p.m)}.`)
       :'×2… con 0 € no hay milagro. Sigues jugando.','hot');
     await sleep(1500);
-    if(!p.cpu){S.phase='idle';setActions(true);}
+    if(!p.cpu){S.phase='idle';setActions(true);timerReset(pi);}
     return 'again';
   }
   if(w.v===-2){ // vocal gratis
     if(![...VOCALES].some(v=>!S.used.has(v))){
       msg('Vocal gratis… pero no quedan vocales. Sigues jugando.','hot');
       await sleep(1300);
-      if(!p.cpu){S.phase='idle';setActions(true);}
+      if(!p.cpu){S.phase='idle';setActions(true);timerReset(pi);}
       return 'again';
     }
     S.freeVowel=true;
@@ -1659,7 +1737,7 @@ async function guessCons(L,pi){
   await sleep(t+150);
   Snd.coin();bumpChip(pi);
   if(checkComplete(pi))return n;
-  if(!p.cpu){S.phase='idle';setActions(true);}
+  if(!p.cpu){S.phase='idle';setActions(true);timerReset(pi);}
   else S.phase='cpu';
   return n;
 }
@@ -1680,7 +1758,7 @@ async function guessVowel(L,pi){
   const t=revealLetter(L);
   await sleep(t+150);
   if(checkComplete(pi))return n;
-  if(!p.cpu){S.phase='idle';setActions(true);}
+  if(!p.cpu){S.phase='idle';setActions(true);timerReset(pi);}
   else S.phase='cpu';
   return n;
 }
@@ -1698,7 +1776,7 @@ function startSolve(){
   S.solveList=hiddenCells();S.solveIdx=0;S.solveTyped=0;
   if(!S.solveList.length)return;
   S.solveList[0].classList.add('cursor');
-  showKB('solve');
+  showKB('solve');timerReset(S.turn);
   msg('Rellena las letras ocultas en orden. Un fallo y pierdes el turno.','hot');
   if(ON.active){
     const seq=bumpSeq();
@@ -1831,7 +1909,7 @@ async function cpuSolve(pi){
 
 /* ================= FIN DE RONDA / PARTIDA ================= */
 function winRound(pi){
-  S.phase='roundend';S.cpuAbort=true;
+  S.phase='roundend';S.cpuAbort=true;timerStop();
   setActions(false);hideKB();
   const p=S.players[pi];
   const ganancia=Math.max(p.m,BANCA_MINIMA);
@@ -1870,7 +1948,7 @@ function endGame(){
 $('btn-rematch').addEventListener('click',newGame);
 $('btn-menu').addEventListener('click',()=>{
   if(ON.active)leaveOnline();
-  S.cpuAbort=true;S.gen++;show('screen-home');
+  timerStop();S.cpuAbort=true;S.gen++;show('screen-home');
 });
 $('btn-solo').addEventListener('click',()=>{
   if(ON.active)leaveOnline();
@@ -1886,7 +1964,7 @@ $('btn-solo').addEventListener('click',()=>{
 const DB_URL='https://subasta-de-tiempo-default-rtdb.europe-west1.firebasedatabase.app';
 const BASE='g/aurea/rooms';
 const SV={'.sv':'timestamp'};
-const HB_MS=2000,HB_TIMEOUT=6000,POLL_MS=400,MAX_JUG=3;
+const HB_MS=2000,HB_TIMEOUT=6000,POLL_MS=400,MAX_JUG=4;
 
 const ON={active:false,code:null,data:null,stage:null,round:-1,seq:0,busy:false,
   poll:null,pollLast:null,hb:null,chain:Promise.resolve(),turnPainted:-2,myId:''};
@@ -1939,7 +2017,7 @@ function startHB(){
 }
 function stopHB(){if(ON.hb){clearInterval(ON.hb);ON.hb=null;}}
 function leaveOnline(){
-  stopPoll();stopHB();
+  stopPoll();stopHB();timerStop();
   ON.active=false;ON.code=null;ON.data=null;ON.stage=null;ON.round=-1;ON.seq=0;ON.busy=false;
   ON.chain=Promise.resolve();ON.turnPainted=-2;
   $('btn-skip').style.display='none';
@@ -1964,7 +2042,7 @@ $('btn-create').addEventListener('click',async()=>{
   for(let i=0;i<6;i++){code=genCode();const ex=await fbGet(BASE+'/'+code);if(!ex)break;}
   ON.code=code;ON.active=true;
   await fbSet(roomPath(),{
-    code,createdAt:SV,state:'lobby',v:1,seq:0,
+    code,createdAt:SV,state:'lobby',v:1,seq:0,rounds:3,
     players:{[ON.myId]:{name:myName,joinedAt:SV,lastSeen:Date.now(),hist:getHist().slice(-90)}}
   });
   show('screen-lobby');$('room-code').textContent=code;
@@ -1977,7 +2055,7 @@ $('btn-join').addEventListener('click',async()=>{
   const data=await fbGet(BASE+'/'+code);
   if(!data){$('join-error').textContent='no existe esa sala';return;}
   if(data.state!=='lobby'){$('join-error').textContent='la partida ya ha empezado';return;}
-  if(Object.keys(data.players||{}).length>=MAX_JUG){$('join-error').textContent='la sala está llena (3)';return;}
+  if(Object.keys(data.players||{}).length>=MAX_JUG){$('join-error').textContent='la sala está llena (4)';return;}
   ON.code=code;ON.active=true;
   await fbSet(roomPath()+'/players/'+ON.myId,{name:myName,joinedAt:SV,lastSeen:Date.now(),hist:getHist().slice(-90)});
   show('screen-lobby');$('room-code').textContent=code;
@@ -2002,10 +2080,19 @@ function renderLobby(){
       (id===host?'<span class="tag">anfitrión</span>':'')+(id===ON.myId?'<span class="tag">tú</span>':'');
     box.appendChild(d);
   });
+  const rsel=(ON.data&&(ON.data.rounds===5||ON.data.rounds===7))?ON.data.rounds:3;
+  document.querySelectorAll('.rbtn').forEach(b=>{
+    b.classList.toggle('on',Number(b.dataset.r)===rsel);
+    b.disabled=!soyHost();
+  });
   const puedo=soyHost()&&ids.filter(id=>isConn(pl[id])).length>=2;
   $('btn-start').style.display=puedo?'':'none';
   $('lobby-wait').style.display=soyHost()?'none':'';
 }
+document.querySelectorAll('.rbtn').forEach(b=>b.addEventListener('click',()=>{
+  if(!soyHost()||!ON.active)return;
+  fbSet(roomPath()+'/rounds',Number(b.dataset.r));
+}));
 $('btn-start').addEventListener('click',async()=>{
   const pl=ON.data.players||{};
   const order=Object.keys(pl).filter(id=>isConn(pl[id]))
@@ -2014,10 +2101,12 @@ $('btn-start').addEventListener('click',async()=>{
   const money={},bank={};order.forEach(id=>{money[id]=0;bank[id]=0;});
   const extra=[];
   Object.values(pl).forEach(p=>{(p.hist||[]).forEach(t=>extra.push(t));});
+  const R=(ON.data.rounds===5||ON.data.rounds===7)?ON.data.rounds:3;
+  const first=Math.floor(Math.random()*order.length);
   const seq=bumpSeq();
   await fbUpd(roomPath(),{
-    state:'play',order,panels:pickPanels(extra),round:0,turn:0,
-    money,bank,revealed:'',used:'',seq,last:{seq,type:'start'}
+    state:'play',order,rounds:R,first,panels:pickPanels(extra,R),round:0,turn:first,
+    money,bank,revealed:'',used:'',seq,last:{seq,type:'start',first}
   });
 });
 
@@ -2029,9 +2118,9 @@ function syncPlayersFromData(){
     off:!isConn(d.players[pid])}));
   S.turn=d.turn;
 }
-function enterOnlineRound(){
+async function enterOnlineRound(){
   const d=ON.data;
-  ON.stage='play';ON.round=d.round;ON.busy=false;
+  ON.stage='play';ON.round=d.round;ON.busy=false;timerStop();
   ON.seq=d.last?d.last.seq:0;ON.turnPainted=-2;
   const [cat,txt]=PANELES[d.panels[d.round]];
   S.cat=cat;S.txt=txt;S.rows=wrapPanel(txt);
@@ -2039,12 +2128,17 @@ function enterOnlineRound(){
   S.revealed=new Set([...(d.revealed||'')]);
   S.used=new Set([...(d.used||'')]);
   syncPlayersFromData();
-  $('g-round').textContent=`RONDA ${d.round+1} / 3`;
+  $('g-round').textContent=`RONDA ${d.round+1} / ${d.rounds||3}`;
   $('g-cat').textContent=cat.charAt(0)+cat.slice(1).toLowerCase();
   renderPanel();renderChips();buildWheel();hideKB();
   $('round-veil').classList.remove('visible');
   if(!document.getElementById('screen-game').classList.contains('visible'))show('screen-game');
+  if(d.round===0&&d.last&&d.last.type==='start'){
+    await sorteoTurno(d.turn);
+    if(!ON.active)return;
+  }
   softSync();
+  if(ON.data&&ON.data.state==='play')timerReset(ON.data.turn);
 }
 function paintTurnMsg(){
   if(ON.turnPainted===ON.data.turn)return;
@@ -2053,6 +2147,7 @@ function paintTurnMsg(){
     if(!quedanConsOcultas())msg('Solo quedan vocales: compra o resuelve.','hot');
     else msg('Tu turno. Pulsa el medallón, compra o resuelve.');
   }else msg(`Turno de ${pname(ON.data.order[ON.data.turn])}…`);
+  if(ON.data.state==='play')timerReset(ON.data.turn);
 }
 function softSync(){
   const d=ON.data;
@@ -2099,6 +2194,8 @@ async function animEvent(ev){
       Snd.buzz();msg(`${nm} pierde el turno.`,'bad');await sleep(1100);break;
     case 'skip':
       msg(`Turno saltado: ${nm} está desconectado.`,'bad');await sleep(900);break;
+    case 'timeout':
+      Snd.buzz();msg(`${nm} agota su tiempo.`,'bad');await sleep(1000);break;
     case 'x2':
       Snd.coin();msg(`¡×2! ${nm} duplica su dinero (${fmt(ev.total||0)}).`,'hot');await sleep(1300);break;
     case 'freevoc':
@@ -2138,7 +2235,10 @@ function handleRoom(){
     if(ON.stage!=='play'||ON.round!==d.round){ON.chain=ON.chain.then(()=>enterOnlineRound());return;}
     if(d.last&&d.last.seq>ON.seq){
       const ev=d.last;ON.seq=ev.seq;
-      ON.chain=ON.chain.then(()=>animEvent(ev)).then(()=>softSync());
+      ON.chain=ON.chain.then(()=>animEvent(ev)).then(()=>{
+        softSync();
+        if(ON.data&&ON.data.state==='play'&&['cons','voc','x2','freenone','freevoc','solving'].includes(ev.type))timerReset(ON.data.turn);
+      });
     }else ON.chain=ON.chain.then(()=>softSync());
     return;
   }
@@ -2153,7 +2253,7 @@ function handleRoom(){
 }
 function showOnlineRoundEnd(){
   const d=ON.data;if(!d||d.state!=='roundend')return;
-  ON.stage='roundend';S.phase='sync';setActions(false);hideKB();
+  ON.stage='roundend';S.phase='sync';setActions(false);hideKB();timerStop();
   document.querySelectorAll('.cell[data-ch]').forEach(c=>c.classList.add('rev'));
   syncPlayersFromData();renderChips();
   const win=d.roundWin||{};
@@ -2161,7 +2261,7 @@ function showOnlineRoundEnd(){
   $('rv-phrase').textContent=S.txt;
   $('rv-win').innerHTML=`Resuelve <b>${escapeHtml(pname(win.pid))}</b>`;
   $('rv-bank').textContent=`+ ${fmt(win.amount||0)} a la banca`;
-  const fin=d.round+1>=3;
+  const fin=d.round+1>=(d.rounds||3);
   $('rv-next').textContent=fin?'Ver resultado':'Siguiente ronda';
   $('rv-next').style.display=soyHost()?'':'none';
   $('rv-wait').style.display=soyHost()?'none':'';
@@ -2170,10 +2270,10 @@ function showOnlineRoundEnd(){
 async function onlineNextRound(){
   const d=ON.data;if(!soyHost()||d.state!=='roundend')return;
   const seq=bumpSeq();
-  if(d.round+1>=3){
+  if(d.round+1>=(d.rounds||3)){
     await fbUpd(roomPath(),{state:'end',seq,last:{seq,type:'nextround'}});
   }else{
-    const upd={state:'play',round:d.round+1,turn:(d.round+1)%d.order.length,
+    const upd={state:'play',round:d.round+1,turn:((d.first||0)+d.round+1)%d.order.length,
       revealed:'',used:'',seq,last:{seq,type:'nextround'}};
     d.order.forEach(pid=>upd['money/'+pid]=0);
     await fbUpd(roomPath(),upd);
@@ -2181,7 +2281,7 @@ async function onlineNextRound(){
 }
 function showOnlineEnd(){
   if(ON.stage==='end')return;
-  ON.stage='end';
+  ON.stage='end';timerStop();
   const d=ON.data;
   $('round-veil').classList.remove('visible');
   const rank=d.order.map(pid=>({n:pname(pid),b:(d.bank&&d.bank[pid])||0,me:pid===ON.myId}))
@@ -2229,14 +2329,14 @@ async function onlineSpin(){
     if(antes>0){Snd.coin();S.players[idx].m=newM;bumpChip(idx);}
     msg(antes>0?`¡×2! Duplicas tu dinero: ${fmt(newM)}.`:'×2… con 0 € no hay milagro. Sigues jugando.','hot');
     await sleep(1400);
-    S.phase='idle';ON.busy=false;setActions(true);
+    S.phase='idle';ON.busy=false;setActions(true);timerReset(ON.data.turn);
   }else if(wedge.v===-2){ // vocal gratis
     if(![...VOCALES].some(v=>!S.used.has(v))){
       const s2=ON.seq+1;ON.seq=s2;
       await fbUpd(roomPath(),{seq:s2,last:{seq:s2,type:'freenone',pid:ON.myId}});
       msg('Vocal gratis… pero no quedan vocales. Sigues jugando.','hot');
       await sleep(1200);
-      S.phase='idle';ON.busy=false;setActions(true);
+      S.phase='idle';ON.busy=false;setActions(true);timerReset(ON.data.turn);
     }else{
       const s2=ON.seq+1;ON.seq=s2;
       await fbUpd(roomPath(),{seq:s2,last:{seq:s2,type:'freevoc',pid:ON.myId}});
@@ -2272,7 +2372,7 @@ async function onlineCons(L){
   const t=revealLetter(L);await sleep(t+150);Snd.coin();
   S.players[idx].m=newM;bumpChip(idx);
   if(lettersLeft().size===0){await onlineWinRound();ON.busy=false;return;}
-  S.phase='idle';ON.busy=false;setActions(true);
+  S.phase='idle';ON.busy=false;setActions(true);timerReset(ON.data.turn);
 }
 async function onlineVoc(L){
   S.phase='busy';hideKB();ON.busy=true;
@@ -2297,7 +2397,7 @@ async function onlineVoc(L){
     ['money/'+ON.myId]:newM,last:{seq,type:'voc',pid:ON.myId,l:L,n,free:free?1:0}});
   const t=revealLetter(L);await sleep(t+150);
   if(lettersLeft().size===0){await onlineWinRound();ON.busy=false;return;}
-  S.phase='idle';ON.busy=false;setActions(true);
+  S.phase='idle';ON.busy=false;setActions(true);timerReset(ON.data.turn);
 }
 async function onlineSolveFail(){
   const seq=bumpSeq();
