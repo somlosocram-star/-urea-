@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.13</title>
+<title>Áurea · v0.15</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -26,7 +26,7 @@
   --text:#f4f4f2; --muted:#76767c; --accent:#f4f4f2; --amber:#d4a017;
   --vignette:rgba(0,0,0,0.5); --on-accent:#0b0b0c; --bad:#e06363;
   --tile-hid:#32323b; --tile-line:#52525e; --tile-rev:#f0eee6; --tile-rev-text:#141414;
-  --wheel-a:#1c1c20; --wheel-b:#2a2a30; --wheel-line:#3c3c44;
+  --wheel-a:#3a3a44; --wheel-b:#4c4c58; --wheel-line:#5c5c68;
 }
 body.light, html.pre-light body{
   --bg:#f3f2ee; --panel:#e7e6df; --panel-2:#eeede7; --line:#d2d0c6;
@@ -228,6 +228,17 @@ html.pre-light #app-splash{background:#f3f2ee}
 .bonus-picks .pk.empty{border-style:dashed;color:var(--muted);border-color:var(--line)}
 .bonus-picks .pk.vowel{border-color:var(--amber);color:var(--on-accent);background:var(--amber)}
 .key.picked{background:var(--amber);color:var(--on-accent);box-shadow:none}
+/* clasificación persistente */
+.standings{width:100%;max-width:360px;margin:.4rem 0 1.4rem;border-top:1px solid var(--line);padding-top:1rem}
+.standings-title{font-size:.55rem;letter-spacing:.3em;color:var(--muted);text-transform:uppercase;text-align:center;margin-bottom:.8rem}
+.st-row{display:grid;grid-template-columns:1.4em 1fr auto auto;gap:.6rem;align-items:baseline;padding:.4rem .7rem;border-radius:6px;font-family:'IBM Plex Mono',monospace}
+.st-row.me{background:var(--panel)}
+.st-row .st-pos{font-weight:700;color:var(--muted);font-size:.8rem}
+.st-row.lead .st-pos{color:var(--amber)}
+.st-row .st-nm{font-family:'Cormorant Garamond',serif;font-size:1.15rem;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-row .st-w{font-size:.7rem;color:var(--amber);font-weight:700}
+.st-row .st-p{font-size:.6rem;color:var(--muted)}
+.st-head{display:grid;grid-template-columns:1.4em 1fr auto auto;gap:.6rem;padding:0 .7rem .3rem;font-family:'IBM Plex Mono',monospace;font-size:.5rem;letter-spacing:.15em;color:var(--muted);text-transform:uppercase}
 .rounds-row{display:flex;gap:.5rem;margin-bottom:1.4rem;align-items:center}
 .rounds-row .lbl{font-family:'IBM Plex Mono',monospace;font-size:.55rem;letter-spacing:.3em;color:var(--muted)}
 .rbtn{width:46px;height:40px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1rem;border-radius:8px;cursor:pointer;outline:none}
@@ -266,6 +277,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   <h1 class="title">Áurea</h1>
   <div class="subtitle">gira · compra · resuelve</div>
   <div class="btn-row">
+    <button class="btn" id="btn-reconnect" style="display:none">Volver a la sala</button>
     <button class="btn" id="btn-solo">Un jugador</button>
     <button class="btn" id="btn-online">Online</button>
     <button class="btn btn-secondary" id="btn-install" style="display:none">Instalar en el móvil</button>
@@ -376,10 +388,16 @@ html.pre-light #app-splash{background:#f3f2ee}
   <div class="g-eyebrow" style="letter-spacing:.5em">PARTIDA TERMINADA</div>
   <h1 class="title" style="font-size:clamp(2rem,8vw,3.2rem)" id="end-title">Áurea</h1>
   <div class="rk" id="end-rank"></div>
+  <div class="standings" id="end-standings" style="display:none">
+    <div class="standings-title mono">CLASIFICACIÓN DE LA SALA</div>
+    <div id="standings-list"></div>
+  </div>
   <div class="btn-row">
     <button class="btn" id="btn-bonus" style="display:none">Panel final</button>
     <button class="btn" id="btn-rematch">Revancha</button>
+    <button class="btn" id="btn-online-rematch" style="display:none">Otra partida</button>
     <button class="btn btn-secondary" id="btn-menu">Menú</button>
+    <button class="btn btn-secondary" id="btn-online-leave" style="display:none">Salir de la sala</button>
   </div>
 </section>
 
@@ -418,7 +436,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.13</div>
+<div class="ver" id="ver">ÁUREA · V0.15</div>
 
 <script>
 'use strict';
@@ -1330,7 +1348,7 @@ const S={
   round:0,rounds:3,turn:0,phase:'menu',
   cat:'',txt:'',rows:[],revealed:new Set(),used:new Set(),
   pend:0,solveIdx:0,solveList:[],solveTyped:0,
-  wheelRot:0,cpuAbort:false,panelsUsed:[],gen:0,first:0,bonusDone:false,
+  wheelRot:0,cpuAbort:false,panelsUsed:[],gen:0,first:0,bonusDone:false,statsLogged:false,
 };
 
 /* ================= TEMA / CONTROLES ================= */
@@ -2028,6 +2046,10 @@ $('rv-next').addEventListener('click',()=>{
 });
 function endGame(){
   $('btn-rematch').style.display='';
+  $('btn-menu').style.display='';
+  $('btn-online-rematch').style.display='none';
+  $('btn-online-leave').style.display='none';
+  $('end-standings').style.display='none';
   const order=[...S.players].sort((a,b)=>b.b-a.b);
   const win=order[0];
   $('end-title').textContent=win.n==='TÚ'?'¡Has ganado!':`Gana ${win.n.charAt(0)+win.n.slice(1).toLowerCase()}`;
@@ -2282,6 +2304,67 @@ function coinShower(){
   setTimeout(()=>layer.remove(),2200);
 }
 
+/* ================= RANKING PERSISTENTE ================= */
+function statKey(name){
+  // clave estable por nombre: mayúsculas, sin tildes, sin caracteres problemáticos para Firebase
+  return (name||'JUGADOR').toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[.#$/\[\]\s]+/g,'_').slice(0,20)||'JUGADOR';
+}
+// récord local del dispositivo (mejor banca en una sola partida y totales)
+function loadLocalRecord(){
+  try{return JSON.parse(localStorage.getItem('aurea_record')||'{}');}catch(e){return{};}
+}
+function saveLocalRecord(myBank,won){
+  const r=loadLocalRecord();
+  r.played=(r.played||0)+1;
+  r.wins=(r.wins||0)+(won?1:0);
+  r.bestBank=Math.max(r.bestBank||0,myBank||0);
+  r.bankTotal=(r.bankTotal||0)+(myBank||0);
+  try{localStorage.setItem('aurea_record',JSON.stringify(r));}catch(e){}
+  return r;
+}
+// el ganador (host-autoritativo) registra las stats de todos, una sola vez por partida
+async function recordOnlineStats(){
+  const d=ON.data;if(!d||!d.order)return;
+  if(!soyHost())return;
+  const doneSeq=d.statsSeq||0;
+  const gameSeq=d.seq||0;
+  if(doneSeq>=gameSeq)return; // ya registradas para esta partida
+  const winnerPid=d.order.slice().sort((a,b)=>((d.bank&&d.bank[b])||0)-((d.bank&&d.bank[a])||0))[0];
+  const cur=(await fbGet(roomPath()+'/stats'))||{};
+  const upd={statsSeq:gameSeq};
+  d.order.forEach(pid=>{
+    const nm=pname(pid);const k=statKey(nm);
+    const s=cur[k]||{name:nm,played:0,wins:0,bank:0};
+    s.name=nm;
+    s.played=(s.played||0)+1;
+    s.wins=(s.wins||0)+(pid===winnerPid?1:0);
+    s.bank=(s.bank||0)+((d.bank&&d.bank[pid])||0);
+    upd['stats/'+k]=s;
+  });
+  await fbUpd(roomPath(),upd);
+}
+function renderStandings(){
+  const d=ON.data;const stats=(d&&d.stats)||{};
+  const arr=Object.values(stats);
+  const box=$('end-standings'),list=$('standings-list');
+  if(arr.length<1){box.style.display='none';return;}
+  arr.sort((a,b)=>(b.wins-a.wins)||(b.bank-a.bank));
+  const myK=statKey(myName);
+  list.innerHTML='<div class="st-head"><span></span><span>jugador</span><span>victorias</span><span>partidas</span></div>';
+  arr.forEach((s,i)=>{
+    const r=document.createElement('div');
+    r.className='st-row'+(i===0?' lead':'')+(statKey(s.name)===myK?' me':'');
+    r.innerHTML=`<span class="st-pos">${i+1}</span>`+
+      `<span class="st-nm">${escapeHtml(s.name)}</span>`+
+      `<span class="st-w">${s.wins}</span>`+
+      `<span class="st-p">${s.played}</span>`;
+    list.appendChild(r);
+  });
+  box.style.display='';
+}
+
 /* ================= ONLINE (Firebase REST + polling, patrón Cábala) ================= */
 const DB_URL='https://subasta-de-tiempo-default-rtdb.europe-west1.firebasedatabase.app';
 const BASE='g/aurea/rooms';
@@ -2340,6 +2423,7 @@ function startHB(){
 function stopHB(){if(ON.hb){clearInterval(ON.hb);ON.hb=null;}}
 function leaveOnline(){
   stopPoll();stopHB();timerStop();
+  try{localStorage.removeItem('aurea_room');}catch(e){}
   ON.active=false;ON.code=null;ON.data=null;ON.stage=null;ON.round=-1;ON.seq=0;ON.busy=false;
   ON.chain=Promise.resolve();ON.turnPainted=-2;
   $('btn-skip').style.display='none';
@@ -2354,7 +2438,7 @@ function saveName(){
   myName=$('name-input').value.trim().slice(0,12)||'JUGADOR';
   try{localStorage.setItem('aurea_name',myName);}catch(e){}
 }
-$('btn-online').addEventListener('click',()=>{show('screen-online');});
+$('btn-online').addEventListener('click',()=>{$('btn-reconnect').style.display='none';show('screen-online');});
 $('btn-online-back').addEventListener('click',()=>show('screen-home'));
 $('btn-join-back').addEventListener('click',()=>show('screen-online'));
 $('btn-gojoin').addEventListener('click',()=>{saveName();$('join-error').textContent='';show('screen-join');});
@@ -2363,6 +2447,7 @@ $('btn-create').addEventListener('click',async()=>{
   let code;
   for(let i=0;i<6;i++){code=genCode();const ex=await fbGet(BASE+'/'+code);if(!ex)break;}
   ON.code=code;ON.active=true;
+  try{localStorage.setItem('aurea_room',code);}catch(e){}
   await fbSet(roomPath(),{
     code,createdAt:SV,state:'lobby',v:1,seq:0,rounds:3,
     players:{[ON.myId]:{name:myName,joinedAt:SV,lastSeen:Date.now(),hist:getHist().slice(-90)}}
@@ -2379,6 +2464,7 @@ $('btn-join').addEventListener('click',async()=>{
   if(data.state!=='lobby'){$('join-error').textContent='la partida ya ha empezado';return;}
   if(Object.keys(data.players||{}).length>=MAX_JUG){$('join-error').textContent='la sala está llena (4)';return;}
   ON.code=code;ON.active=true;
+  try{localStorage.setItem('aurea_room',code);}catch(e){}
   await fbSet(roomPath()+'/players/'+ON.myId,{name:myName,joinedAt:SV,lastSeen:Date.now(),hist:getHist().slice(-90)});
   show('screen-lobby');$('room-code').textContent=code;
   startPoll();startHB();
@@ -2425,11 +2511,50 @@ $('btn-start').addEventListener('click',async()=>{
   Object.values(pl).forEach(p=>{(p.hist||[]).forEach(t=>extra.push(t));});
   const R=(ON.data.rounds===5||ON.data.rounds===7)?ON.data.rounds:3;
   const first=Math.floor(Math.random()*order.length);
-  S.bonusDone=false;
+  S.bonusDone=false;S.statsLogged=false;
   const seq=bumpSeq();
   await fbUpd(roomPath(),{
     state:'play',order,rounds:R,first,panels:pickPanels(extra,R),round:0,turn:first,
     money,bank,revealed:'',used:'',seq,last:{seq,type:'start',first}
+  });
+});
+
+/* --- reconexión a sala tras recargar/cerrar --- */
+async function tryReconnect(){
+  let code='';try{code=localStorage.getItem('aurea_room')||'';}catch(e){}
+  if(!code)return;
+  const data=await fbGet(BASE+'/'+code);
+  if(!data||!data.players||!data.players[ON.myId]){try{localStorage.removeItem('aurea_room');}catch(e){}return;}
+  // la sala existe y seguimos en ella: ofrecer volver
+  const btn=$('btn-reconnect');
+  btn.style.display='';
+  btn.onclick=()=>{
+    ON.code=code;ON.active=true;ON.stage=null;ON.round=-1;ON.seq=0;
+    fbSet(roomPath()+'/players/'+ON.myId+'/lastSeen',Date.now());
+    startPoll();startHB();
+    // handleRoom decidirá la pantalla según el estado (lobby/play/roundend/end)
+  };
+}
+
+/* --- revancha y salida online --- */
+$('btn-online-leave').addEventListener('click',async()=>{
+  const pl=(ON.data&&ON.data.players)||{};
+  const others=Object.keys(pl).filter(id=>id!==ON.myId);
+  if(others.length===0)await fbDel(roomPath());
+  else await fbDel(roomPath()+'/players/'+ON.myId);
+  leaveOnline();show('screen-home');
+});
+$('btn-online-rematch').addEventListener('click',async()=>{
+  if(!soyHost()||!ON.data)return;
+  const pl=ON.data.players||{};
+  const keep={};
+  Object.keys(pl).forEach(id=>{
+    if(isConn(pl[id]))keep[id]={name:pl[id].name,joinedAt:pl[id].joinedAt||Date.now(),lastSeen:Date.now(),hist:(pl[id].hist||[])};
+  });
+  S.bonusDone=false;ON.stage=null;ON.round=-1;ON.seq=0;ON.turnPainted=-2;
+  await fbSet(roomPath(),{
+    code:ON.code,createdAt:ON.data.createdAt||SV,state:'lobby',v:1,seq:1,
+    rounds:ON.data.rounds||3,players:keep
   });
 });
 
@@ -2553,7 +2678,18 @@ function handleRoom(){
   const d=ON.data;
   if(!ON.active)return;
   if(!d){leaveOnline();show('screen-home');return;}
-  if(d.state==='lobby'){renderLobby();return;}
+  if(d.state==='lobby'){
+    // revancha: si veníamos de una partida, resetear estado local y volver al lobby
+    if(ON.stage){ON.stage=null;ON.round=-1;ON.seq=0;ON.turnPainted=-2;S.bonusDone=false;
+      timerStop();$('round-veil').classList.remove('visible');show('screen-lobby');
+      $('room-code').textContent=ON.code;}
+    else if(!document.getElementById('screen-lobby').classList.contains('visible')
+      &&!document.getElementById('screen-online').classList.contains('visible')
+      &&!document.getElementById('screen-join').classList.contains('visible')){
+      show('screen-lobby');$('room-code').textContent=ON.code;
+    }
+    renderLobby();return;
+  }
   if(d.state==='play'){
     if(ON.stage!=='play'||ON.round!==d.round){ON.chain=ON.chain.then(()=>enterOnlineRound());return;}
     if(d.last&&d.last.seq>ON.seq){
@@ -2603,7 +2739,7 @@ async function onlineNextRound(){
   }
 }
 function showOnlineEnd(){
-  if(ON.stage==='end')return;
+  if(ON.stage==='end'){renderStandings();return;}
   ON.stage='end';timerStop();
   const d=ON.data;
   $('round-veil').classList.remove('visible');
@@ -2618,11 +2754,23 @@ function showOnlineEnd(){
     rk.appendChild(r);
   });
   $('btn-rematch').style.display='none';
+  $('btn-menu').style.display='none';
+  // revancha online: el anfitrión reinicia la sala al lobby
+  $('btn-online-rematch').style.display=soyHost()?'':'none';
+  $('btn-online-leave').style.display='';
   // panel final: solo el ganador online, y solo una vez
   const winnerPid=d.order.slice().sort((a,b)=>((d.bank&&d.bank[b])||0)-((d.bank&&d.bank[a])||0))[0];
   const ofrecer=winnerPid===ON.myId&&!d.bonusWon&&!S.bonusDone;
   $('btn-bonus').style.display=ofrecer?'':'none';
   $('btn-bonus').onclick=()=>startBonus(true,ON.myId);
+  // ranking persistente: récord local (una vez) + registro autoritativo + pintado
+  if(!S.statsLogged){
+    S.statsLogged=true;
+    const myBank=(d.bank&&d.bank[ON.myId])||0;
+    saveLocalRecord(myBank,winnerPid===ON.myId);
+  }
+  recordOnlineStats();
+  renderStandings();
   Snd.applause();
   show('screen-end');
 }
@@ -2784,6 +2932,7 @@ window.addEventListener('load',()=>{
   setTimeout(()=>{
     $('app-splash').classList.add('hiding');
     show('screen-home');
+    tryReconnect();
     setTimeout(()=>$('app-splash').remove(),700);
   },1400);
 });
