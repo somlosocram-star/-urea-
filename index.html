@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.17.1</title>
+<title>Áurea · v0.17.2</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -435,7 +435,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.17.1</div>
+<div class="ver" id="ver">ÁUREA · V0.17.2</div>
 
 <script>
 'use strict';
@@ -2817,9 +2817,8 @@ function handleBonusState(){
     }
     if(!soyGanador)syncBonusSpectator();
   }catch(e){
-    // ante cualquier fallo del bonus, no congelar: saltar al resultado
-    ON.stage='bonus';
-    if(soyHost()){const seq=bumpSeq();fbUpd(roomPath(),{seq,state:'end',last:{seq,type:'toend'}});}
+    // reportar en pantalla el motivo; NO degradar automáticamente a end
+    try{const m=$('b-msg')||$('msg');if(m){m.textContent='⚠ bonus: '+((e&&e.message)||e);m.className='bad';}}catch(_){}
   }
 }
 function showOnlineRoundEnd(){
@@ -2850,8 +2849,9 @@ async function onlineNextRound(){
         bonus:{cat,txt,winner:winnerPid,phase:'pick',revealed:BONUS_FREE.split('').filter(ch=>txt.includes(ch)).join(''),result:''},
         last:{seq,type:'bonusstart',pid:winnerPid}});
     }catch(e){
-      // si falla la preparación del bonus, ir directo al resultado
-      await fbUpd(roomPath(),{state:'end',seq,last:{seq,type:'toend'}});
+      // reportar el motivo real antes de degradar al resultado
+      try{const m=$('msg');if(m){m.textContent='⚠ bonus: '+((e&&e.message)||e);m.className='bad';}}catch(_){}
+      await fbUpd(roomPath(),{state:'end',seq,last:{seq,type:'toend',err:String((e&&e.message)||e).slice(0,80)}});
     }
   }else{
     const upd={state:'play',round:d.round+1,turn:((d.first||0)+d.round+1)%d.order.length,
