@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.17</title>
+<title>Áurea · v0.17.1</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -435,10 +435,23 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.17</div>
+<div class="ver" id="ver">ÁUREA · V0.17.1</div>
 
 <script>
 'use strict';
+// diagnóstico: capturar errores no atrapados para no congelar en silencio
+window.addEventListener('error',function(ev){
+  try{
+    const m=$('msg');
+    if(m){m.textContent='⚠ '+(ev.message||'error')+' @'+(ev.lineno||'?');m.className='bad';}
+  }catch(e){}
+});
+window.addEventListener('unhandledrejection',function(ev){
+  try{
+    const m=$('msg');
+    if(m){m.textContent='⚠ promesa: '+((ev.reason&&ev.reason.message)||ev.reason||'?');m.className='bad';}
+  }catch(e){}
+});
 /* ================= DATOS ================= */
 const PANELES=[
 ["REFRANES","A QUIEN MADRUGA DIOS LE AYUDA"],
@@ -2166,14 +2179,19 @@ function loadBonusPanel(cat,txt){
 }
 // modo un jugador
 function startBonus(){
-  B.online=false;B.winnerPid=null;S.bonusDone=true;
-  const [cat,txt]=pickBonusPanel();
-  loadBonusPanel(cat,txt);B.phase='pick';updateBonusKeys();
-  $('b-kb-title').textContent='ELIGE 3 CONSONANTES Y 1 VOCAL';
-  $('b-confirm').style.display='none';
-  $('b-msg').textContent='RSTLNE ya están puestas. Elige 3 consonantes y 1 vocal.';
-  $('b-stage-kb').style.display='';
-  show('screen-bonus');
+  try{
+    B.online=false;B.winnerPid=null;S.bonusDone=true;
+    const [cat,txt]=pickBonusPanel();
+    loadBonusPanel(cat,txt);B.phase='pick';updateBonusKeys();
+    $('b-kb-title').textContent='ELIGE 3 CONSONANTES Y 1 VOCAL';
+    $('b-confirm').style.display='none';
+    $('b-msg').textContent='RSTLNE ya están puestas. Elige 3 consonantes y 1 vocal.';
+    $('b-stage-kb').style.display='';
+    show('screen-bonus');
+  }catch(e){
+    // si el bonus falla, no congelar: mostrar el resultado
+    showEndScreen();
+  }
 }
 // ganador online: juega y publica cada paso
 function startBonusOnline(){
@@ -2740,6 +2758,12 @@ async function animEvent(ev){
       await sleep(400);break;}
   }
 }
+function chainNext(fn){
+  ON.chain=ON.chain.then(fn).catch(e=>{
+    // un error en un eslabón no debe congelar el polling
+    try{const m=$('msg');if(m){m.textContent='⚠ '+((e&&e.message)||e);m.className='bad';}}catch(_){}
+  });
+}
 function handleRoom(){
   const d=ON.data;
   if(!ON.active)return;
@@ -2757,42 +2781,46 @@ function handleRoom(){
     renderLobby();return;
   }
   if(d.state==='play'){
-    if(ON.stage!=='play'||ON.round!==d.round){ON.chain=ON.chain.then(()=>enterOnlineRound());return;}
+    if(ON.stage!=='play'||ON.round!==d.round){chainNext(()=>enterOnlineRound());return;}
     if(d.last&&d.last.seq>ON.seq){
       const ev=d.last;ON.seq=ev.seq;
-      ON.chain=ON.chain.then(()=>animEvent(ev)).then(()=>{
+      chainNext(()=>animEvent(ev).then(()=>{
         softSync();
         if(ON.data&&ON.data.state==='play'&&['cons','voc','x2','freenone','freevoc','solving'].includes(ev.type))timerReset(ON.data.turn);
-      });
-    }else ON.chain=ON.chain.then(()=>softSync());
+      }));
+    }else chainNext(()=>softSync());
     return;
   }
   if(d.state==='roundend'){
     if(d.last&&d.last.seq>ON.seq){
       const ev=d.last;ON.seq=ev.seq;
-      ON.chain=ON.chain.then(()=>animEvent(ev)).then(()=>showOnlineRoundEnd());
-    }else ON.chain=ON.chain.then(()=>showOnlineRoundEnd());
+      chainNext(()=>animEvent(ev).then(()=>showOnlineRoundEnd()));
+    }else chainNext(()=>showOnlineRoundEnd());
     return;
   }
   if(d.state==='bonus'){
-    ON.chain=ON.chain.then(()=>handleBonusState());
+    chainNext(()=>handleBonusState());
     return;
   }
-  if(d.state==='end'){ON.chain=ON.chain.then(()=>showOnlineEnd());return;}
+  if(d.state==='end'){chainNext(()=>showOnlineEnd());return;}
 }
 function handleBonusState(){
-  const d=ON.data,b=d.bonus;if(!b)return;
-  timerStop();$('round-veil').classList.remove('visible');
-  const soyGanador=b.winner===ON.myId;
-  if(ON.stage!=='bonus'){
-    // primera entrada al bonus
-    ON.stage='bonus';S.bonusDone=true;
-    if(soyGanador)startBonusOnline();
-    else enterBonusSpectator();
-    return;
+  try{
+    const d=ON.data,b=d.bonus;if(!b)return;
+    timerStop();$('round-veil').classList.remove('visible');
+    const soyGanador=b.winner===ON.myId;
+    if(ON.stage!=='bonus'){
+      ON.stage='bonus';S.bonusDone=true;
+      if(soyGanador)startBonusOnline();
+      else enterBonusSpectator();
+      return;
+    }
+    if(!soyGanador)syncBonusSpectator();
+  }catch(e){
+    // ante cualquier fallo del bonus, no congelar: saltar al resultado
+    ON.stage='bonus';
+    if(soyHost()){const seq=bumpSeq();fbUpd(roomPath(),{seq,state:'end',last:{seq,type:'toend'}});}
   }
-  // actualizaciones sucesivas: solo espectadores replican
-  if(!soyGanador)syncBonusSpectator();
 }
 function showOnlineRoundEnd(){
   const d=ON.data;if(!d||d.state!=='roundend')return;
@@ -2815,11 +2843,16 @@ async function onlineNextRound(){
   const seq=bumpSeq();
   if(d.round+1>=(d.rounds||3)){
     // fin de rondas: el ganador juega el panel final; todos lo ven
-    const winnerPid=d.order.slice().sort((a,b)=>((d.bank&&d.bank[b])||0)-((d.bank&&d.bank[a])||0))[0];
-    const [cat,txt]=pickBonusPanel();
-    await fbUpd(roomPath(),{state:'bonus',seq,
-      bonus:{cat,txt,winner:winnerPid,phase:'pick',revealed:BONUS_FREE.split('').filter(ch=>txt.includes(ch)).join(''),result:''},
-      last:{seq,type:'bonusstart',pid:winnerPid}});
+    try{
+      const winnerPid=d.order.slice().sort((a,b)=>((d.bank&&d.bank[b])||0)-((d.bank&&d.bank[a])||0))[0];
+      const [cat,txt]=pickBonusPanel();
+      await fbUpd(roomPath(),{state:'bonus',seq,
+        bonus:{cat,txt,winner:winnerPid,phase:'pick',revealed:BONUS_FREE.split('').filter(ch=>txt.includes(ch)).join(''),result:''},
+        last:{seq,type:'bonusstart',pid:winnerPid}});
+    }catch(e){
+      // si falla la preparación del bonus, ir directo al resultado
+      await fbUpd(roomPath(),{state:'end',seq,last:{seq,type:'toend'}});
+    }
   }else{
     const upd={state:'play',round:d.round+1,turn:((d.first||0)+d.round+1)%d.order.length,
       revealed:'',used:'',seq,last:{seq,type:'nextround'}};
