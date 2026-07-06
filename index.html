@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.15</title>
+<title>Áurea · v0.16</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -436,7 +436,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.15</div>
+<div class="ver" id="ver">ÁUREA · V0.16</div>
 
 <script>
 'use strict';
@@ -1209,18 +1209,30 @@ function wrapPanel(t){
 /* ================= AUDIO (WebAudio, sin assets) ================= */
 const Snd=(()=>{
   let ctx=null,muted=false,tickBuf=null,warnBuf=null,lastTick=0;
+  const BUF={};
   try{muted=localStorage.getItem('aurea_sound')==='off';}catch(e){}
   function ac(){if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();return ctx;}
+  function loadBuf(name,file){
+    fetch(file).then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();}).then(b=>{
+      if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();
+      return ctx.decodeAudioData(b);
+    }).then(buf=>{BUF[name]=buf;if(name==='tick')tickBuf=buf;if(name==='warn')warnBuf=buf;}).catch(()=>{});
+  }
+  function playBuf(name,vol,rate){
+    const buf=BUF[name];if(!buf)return false;
+    const c=ac();const s=c.createBufferSource(),g=c.createGain();
+    s.buffer=buf;if(rate)s.playbackRate.value=rate;g.gain.value=vol==null?.8:vol;
+    s.connect(g).connect(c.destination);s.start();
+    return true;
+  }
   // click real de trinquete (extraído del giro de ruleta); fallback sintético
-  fetch('tick.wav').then(r=>r.arrayBuffer()).then(b=>{
-    if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();
-    return ctx.decodeAudioData(b);
-  }).then(buf=>{tickBuf=buf;}).catch(()=>{});
-  // aviso de tiempo opcional: si existe warn.wav en la raíz, se usa en vez del sintético
-  fetch('warn.wav').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();}).then(b=>{
-    if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();
-    return ctx.decodeAudioData(b);
-  }).then(buf=>{warnBuf=buf;}).catch(()=>{});
+  // one-shots reales (con fallback sintético si algún fichero falta)
+  loadBuf('tick','tick.wav');
+  loadBuf('warn','warn.wav');
+  loadBuf('ding','ding.wav');
+  loadBuf('coins','coins.wav');
+  loadBuf('applause','applause.wav');
+  loadBuf('buzz','buzz.wav');
   function tone(f,dur,type='sine',vol=.14,when=0){
     if(muted)return;const c=ac();const t=c.currentTime+when;
     const o=c.createOscillator(),g=c.createGain();
@@ -1243,13 +1255,14 @@ const Snd=(()=>{
         s.connect(g).connect(c.destination);s.start();
       }else tone(1500,.03,'square',.03);
     },
-    ding(){tone(880,.25,'sine',.12);tone(1320,.35,'sine',.08,.06);},
-    coin(){tone(988,.1,'triangle',.12);tone(1319,.22,'triangle',.1,.08);},
-    buzz(){tone(140,.4,'sawtooth',.12);},
+    ding(){if(playBuf('ding',.7))return;tone(880,.25,'sine',.12);tone(1320,.35,'sine',.08,.06);},
+    coin(){if(playBuf('coins',.6,.95+Math.random()*.1))return;tone(988,.1,'triangle',.12);tone(1319,.22,'triangle',.1,.08);},
+    buzz(){if(playBuf('buzz',.8))return;tone(140,.4,'sawtooth',.12);},
     quiebra(){tone(220,.3,'sawtooth',.12);tone(155,.4,'sawtooth',.12,.18);tone(98,.6,'sawtooth',.13,.38);},
     win(){[523,659,784,1047].forEach((f,i)=>tone(f,.4,'triangle',.12,i*.12));},
     applause(){
       if(muted)return;
+      if(playBuf('applause',.8))return;
       const c=ac();const t=c.currentTime;
       // ráfaga de ruido con envolvente = aplauso; dos capas para densidad
       for(let layer=0;layer<2;layer++){

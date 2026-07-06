@@ -2,7 +2,7 @@
 // HTML: network-first (para no servir versiones viejas)
 // Estáticos: cache-first
 // Música: NO se precachea; se cachea perezosamente al primer uso
-const CACHE = 'aurea-v16';
+const CACHE = 'aurea-v17';
 const CORE = [
   './',
   'index.html',
@@ -10,6 +10,11 @@ const CORE = [
   'aurea-seal.png',
   'aurea-hub.png',
   'tick.wav',
+  'warn.wav',
+  'ding.wav',
+  'coins.wav',
+  'applause.wav',
+  'buzz.wav',
   'icon-192.png',
   'icon-512.png'
 ];
