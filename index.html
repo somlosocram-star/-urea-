@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.16</title>
+<title>Áurea · v0.17</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -393,7 +393,6 @@ html.pre-light #app-splash{background:#f3f2ee}
     <div id="standings-list"></div>
   </div>
   <div class="btn-row">
-    <button class="btn" id="btn-bonus" style="display:none">Panel final</button>
     <button class="btn" id="btn-rematch">Revancha</button>
     <button class="btn" id="btn-online-rematch" style="display:none">Otra partida</button>
     <button class="btn btn-secondary" id="btn-menu">Menú</button>
@@ -436,7 +435,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.16</div>
+<div class="ver" id="ver">ÁUREA · V0.17</div>
 
 <script>
 'use strict';
@@ -2058,6 +2057,13 @@ $('rv-next').addEventListener('click',()=>{
   else startRound();
 });
 function endGame(){
+  const order=[...S.players].sort((a,b)=>b.b-a.b);
+  const win=order[0];
+  // si gana el humano y no ha jugado el bonus, ir directo al panel final
+  if(!win.cpu&&!S.bonusDone){startBonus();return;}
+  showEndScreen();
+}
+function showEndScreen(){
   $('btn-rematch').style.display='';
   $('btn-menu').style.display='';
   $('btn-online-rematch').style.display='none';
@@ -2073,13 +2079,9 @@ function endGame(){
     r.innerHTML=`<span class="rk-pos">${i+1}</span><span class="rk-nm">${p.n.charAt(0)+p.n.slice(1).toLowerCase()}</span><span class="rk-m">${fmt(p.b)}</span>`;
     rk.appendChild(r);
   });
-  // panel final: solo si gana el jugador humano y no lo ha jugado ya
-  const humanWins=!win.cpu&&!S.bonusDone;
-  $('btn-bonus').style.display=humanWins?'':'none';
   Snd.applause();
   show('screen-end');
 }
-$('btn-bonus').addEventListener('click',()=>startBonus(false,null));
 $('btn-rematch').addEventListener('click',newGame);
 $('btn-menu').addEventListener('click',()=>{
   if(ON.active)leaveOnline();
@@ -2154,20 +2156,72 @@ function bonusPick(L){
   $('b-confirm').style.display=ready?'':'none';
   $('b-confirm').textContent='Colocar letras';
 }
-function startBonus(online,winnerPid){
-  B.online=online;B.winnerPid=winnerPid;
-  S.bonusDone=true;
-  const [cat,txt]=pickBonusPanel();
+function loadBonusPanel(cat,txt){
   B.txt=txt;B.rows=wrapPanel(txt);
   B.revealed=new Set([...BONUS_FREE].filter(ch=>txt.includes(ch)));
-  B.picksC=[];B.pickV=null;B.phase='pick';
+  B.picksC=[];B.pickV=null;
   $('b-cat').textContent=cat.charAt(0)+cat.slice(1).toLowerCase();
-  $('b-kb-title').textContent='ELIGE 3 CONSONANTES Y 1 VOCAL';
   $('b-secs').textContent='';$('b-disc').style.background='var(--amber)';
+  renderBonusPanelCells();buildBonusKB();renderBonusPicks();
+}
+// modo un jugador
+function startBonus(){
+  B.online=false;B.winnerPid=null;S.bonusDone=true;
+  const [cat,txt]=pickBonusPanel();
+  loadBonusPanel(cat,txt);B.phase='pick';updateBonusKeys();
+  $('b-kb-title').textContent='ELIGE 3 CONSONANTES Y 1 VOCAL';
   $('b-confirm').style.display='none';
   $('b-msg').textContent='RSTLNE ya están puestas. Elige 3 consonantes y 1 vocal.';
-  renderBonusPanelCells();buildBonusKB();renderBonusPicks();updateBonusKeys();
+  $('b-stage-kb').style.display='';
   show('screen-bonus');
+}
+// ganador online: juega y publica cada paso
+function startBonusOnline(){
+  const b=ON.data.bonus;
+  B.online=true;B.winnerPid=ON.myId;
+  loadBonusPanel(b.cat,b.txt);B.phase='pick';updateBonusKeys();
+  $('b-kb-title').textContent='ELIGE 3 CONSONANTES Y 1 VOCAL';
+  $('b-confirm').style.display='none';
+  $('b-msg').textContent='RSTLNE ya están puestas. Elige 3 consonantes y 1 vocal.';
+  $('b-stage-kb').style.display='';
+  show('screen-bonus');
+}
+// perdedores: entran a mirar
+function enterBonusSpectator(){
+  const b=ON.data.bonus;
+  B.online=true;B.winnerPid=b.winner;B.phase='watch';
+  loadBonusPanel(b.cat,b.txt);
+  $('b-kb-title').textContent='';
+  $('b-stage-kb').style.display='none';
+  $('b-confirm').style.display='none';
+  $('b-msg').textContent=`${pname(b.winner)} juega el panel final…`;
+  syncBonusSpectator();
+  show('screen-bonus');
+}
+function syncBonusSpectator(){
+  const b=ON.data.bonus;if(!b)return;
+  // revelar según lo publicado por el ganador
+  [...(b.revealed||'')].forEach(L=>{
+    B.revealed.add(L);
+    document.querySelectorAll(`#b-panel .cell[data-ch="${L}"]`).forEach(c=>c.classList.add('rev'));
+  });
+  if(b.phase==='solving')$('b-msg').textContent=`${pname(b.winner)} resuelve contra el reloj…`;
+  if(b.result==='win'){
+    document.querySelectorAll('#b-panel .cell[data-ch]').forEach(c=>c.classList.add('rev'));
+    $('b-msg').textContent=`¡${pname(b.winner)} resuelve! +${fmt(BONUS_PRIZE)}`;
+    if(!B._spectDone){B._spectDone=true;Snd.applause();coinShower();}
+  }else if(b.result==='lose'){
+    document.querySelectorAll('#b-panel .cell[data-ch]').forEach(c=>c.classList.add('rev'));
+    $('b-msg').textContent=`Se acabó el tiempo. La frase era…`;
+  }
+}
+function publishBonus(patch){
+  if(!B.online||B.winnerPid!==ON.myId)return;
+  const seq=bumpSeq();
+  const upd={seq};
+  Object.entries(patch).forEach(([k,v])=>upd['bonus/'+k]=v);
+  upd.last={seq,type:'bonusupd'};
+  fbUpd(roomPath(),upd);
 }
 function renderBonusPanelCells(){
   const wrap=$('b-panel');wrap.innerHTML='';
@@ -2209,6 +2263,7 @@ async function placeBonusLetters(){
       await sleep(500);
     }
   }
+  publishBonus({revealed:[...B.revealed].join(''),phase:'placed'});
   // ¿queda algo por resolver?
   const faltan=[...B.txt].some(ch=>esLetra(ch)&&!B.revealed.has(ch));
   if(!faltan){bonusWin();return;}
@@ -2218,6 +2273,7 @@ async function placeBonusLetters(){
 }
 function beginBonusSolve(){
   B.phase='solve';$('b-confirm').style.display='none';
+  publishBonus({phase:'solving'});
   B.solveList=[...document.querySelectorAll('#b-panel .cell[data-ch]')]
     .filter(c=>esLetra(c.dataset.ch)&&!c.classList.contains('rev'));
   B.solveIdx=0;
@@ -2263,17 +2319,18 @@ function bonusWin(){
   document.querySelectorAll('#b-panel .cell[data-ch]').forEach(c=>c.classList.add('rev'));
   $('b-secs').textContent='';
   $('b-msg').textContent=`¡Resuelto! +${fmt(BONUS_PRIZE)}`;
-  Snd.win();Snd.applause();vibrate([40,60,120]);
-  coinShower();
+  Snd.win();Snd.applause();vibrate([40,60,120]);coinShower();
   if(B.online&&ON.active&&B.winnerPid===ON.myId){
     const newB=((ON.data.bank&&ON.data.bank[ON.myId])||0)+BONUS_PRIZE;
     const seq=bumpSeq();
-    fbUpd(roomPath(),{seq,['bank/'+ON.myId]:newB,bonusWon:1,last:{seq,type:'bonuswin',pid:ON.myId}});
+    fbUpd(roomPath(),{seq,['bank/'+ON.myId]:newB,bonusWon:1,
+      ['bonus/result']:'win',['bonus/revealed']:[...B.revealed].join(''),
+      last:{seq,type:'bonuswin',pid:ON.myId}});
+    setTimeout(()=>{const s2=bumpSeq();fbUpd(roomPath(),{seq:s2,state:'end',last:{seq:s2,type:'toend'}});},2600);
   }else{
     const w=S.players.find(p=>!p.cpu);if(w)w.b+=BONUS_PRIZE;
+    setTimeout(()=>{refreshEndAfterBonus();},1800);
   }
-  setTimeout(()=>{$('b-confirm').textContent='Ver resultado';$('b-confirm').style.display='';
-    $('b-confirm').onclick=()=>{B.phase='pick';show(B.online?'screen-end':'screen-end');refreshEndAfterBonus();};},1600);
 }
 function bonusLose(){
   B.phase='done';stopBonusTimer();
@@ -2281,21 +2338,17 @@ function bonusLose(){
   $('b-msg').textContent='Se acabó el tiempo. La frase era…';
   document.querySelectorAll('#b-panel .cell[data-ch]').forEach(c=>c.classList.add('rev'));
   vibrate(200);
-  setTimeout(()=>{$('b-confirm').textContent='Ver resultado';$('b-confirm').style.display='';
-    $('b-confirm').onclick=()=>{B.phase='pick';show('screen-end');refreshEndAfterBonus();};},1600);
+  if(B.online&&ON.active&&B.winnerPid===ON.myId){
+    const seq=bumpSeq();
+    fbUpd(roomPath(),{seq,['bonus/result']:'lose',['bonus/revealed']:[...B.txt].filter(esLetra).join(''),
+      last:{seq,type:'bonuslose',pid:ON.myId}});
+    setTimeout(()=>{const s2=bumpSeq();fbUpd(roomPath(),{seq:s2,state:'end',last:{seq:s2,type:'toend'}});},2600);
+  }else{
+    setTimeout(()=>{refreshEndAfterBonus();},1800);
+  }
 }
 function refreshEndAfterBonus(){
-  $('btn-bonus').style.display='none';
-  if(!B.online){
-    const order=[...S.players].sort((a,b)=>b.b-a.b);
-    const rk=$('end-rank');rk.innerHTML='';
-    order.forEach((p,i)=>{
-      const r=document.createElement('div');
-      r.className='rk-row'+(i===0?' win':'');
-      r.innerHTML=`<span class="rk-pos">${i+1}</span><span class="rk-nm">${p.n.charAt(0)+p.n.slice(1).toLowerCase()}</span><span class="rk-m">${fmt(p.b)}</span>`;
-      rk.appendChild(r);
-    });
-  }
+  if(!B.online){showEndScreen();}
 }
 
 /* ================= HÁPTICA + MONEDAS ================= */
@@ -2721,7 +2774,25 @@ function handleRoom(){
     }else ON.chain=ON.chain.then(()=>showOnlineRoundEnd());
     return;
   }
+  if(d.state==='bonus'){
+    ON.chain=ON.chain.then(()=>handleBonusState());
+    return;
+  }
   if(d.state==='end'){ON.chain=ON.chain.then(()=>showOnlineEnd());return;}
+}
+function handleBonusState(){
+  const d=ON.data,b=d.bonus;if(!b)return;
+  timerStop();$('round-veil').classList.remove('visible');
+  const soyGanador=b.winner===ON.myId;
+  if(ON.stage!=='bonus'){
+    // primera entrada al bonus
+    ON.stage='bonus';S.bonusDone=true;
+    if(soyGanador)startBonusOnline();
+    else enterBonusSpectator();
+    return;
+  }
+  // actualizaciones sucesivas: solo espectadores replican
+  if(!soyGanador)syncBonusSpectator();
 }
 function showOnlineRoundEnd(){
   const d=ON.data;if(!d||d.state!=='roundend')return;
@@ -2743,7 +2814,12 @@ async function onlineNextRound(){
   const d=ON.data;if(!soyHost()||d.state!=='roundend')return;
   const seq=bumpSeq();
   if(d.round+1>=(d.rounds||3)){
-    await fbUpd(roomPath(),{state:'end',seq,last:{seq,type:'nextround'}});
+    // fin de rondas: el ganador juega el panel final; todos lo ven
+    const winnerPid=d.order.slice().sort((a,b)=>((d.bank&&d.bank[b])||0)-((d.bank&&d.bank[a])||0))[0];
+    const [cat,txt]=pickBonusPanel();
+    await fbUpd(roomPath(),{state:'bonus',seq,
+      bonus:{cat,txt,winner:winnerPid,phase:'pick',revealed:BONUS_FREE.split('').filter(ch=>txt.includes(ch)).join(''),result:''},
+      last:{seq,type:'bonusstart',pid:winnerPid}});
   }else{
     const upd={state:'play',round:d.round+1,turn:((d.first||0)+d.round+1)%d.order.length,
       revealed:'',used:'',seq,last:{seq,type:'nextround'}};
@@ -2771,11 +2847,7 @@ function showOnlineEnd(){
   // revancha online: el anfitrión reinicia la sala al lobby
   $('btn-online-rematch').style.display=soyHost()?'':'none';
   $('btn-online-leave').style.display='';
-  // panel final: solo el ganador online, y solo una vez
   const winnerPid=d.order.slice().sort((a,b)=>((d.bank&&d.bank[b])||0)-((d.bank&&d.bank[a])||0))[0];
-  const ofrecer=winnerPid===ON.myId&&!d.bonusWon&&!S.bonusDone;
-  $('btn-bonus').style.display=ofrecer?'':'none';
-  $('btn-bonus').onclick=()=>startBonus(true,ON.myId);
   // ranking persistente: récord local (una vez) + registro autoritativo + pintado
   if(!S.statsLogged){
     S.statsLogged=true;
