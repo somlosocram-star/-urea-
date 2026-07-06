@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.12.1</title>
+<title>Áurea · v0.13</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -217,6 +217,17 @@ html.pre-light #app-splash{background:#f3f2ee}
 .guest-waiting{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.05rem;color:var(--muted);margin-bottom:1.2rem}
 .chip.off{opacity:.4}
 #btn-skip{font-size:.55rem;padding:.5rem 1rem}
+/* duelo final */
+#screen-bonus{padding:0;justify-content:flex-start}
+.bonus-timer-wrap{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:.3rem;padding:.6rem 0}
+.bonus-disc{width:58px;height:58px;border-radius:50%;border:2px solid #8a6a10;background:var(--amber);box-shadow:0 2px 9px rgba(0,0,0,.35),inset 0 1px 2px rgba(255,244,200,.5)}
+.bonus-secs{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.1rem;color:var(--amber);min-height:1.2em}
+#b-stage-kb{display:flex;flex-direction:column;align-items:center;gap:.55rem;width:100%;padding:0 .5rem}
+.bonus-picks{display:flex;gap:.4rem;margin-top:.5rem;min-height:1.6rem;flex-wrap:wrap;justify-content:center}
+.bonus-picks .pk{width:1.9rem;height:1.9rem;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:.9rem;border:1px solid var(--amber);color:var(--amber);background:var(--panel-2)}
+.bonus-picks .pk.empty{border-style:dashed;color:var(--muted);border-color:var(--line)}
+.bonus-picks .pk.vowel{border-color:var(--amber);color:var(--on-accent);background:var(--amber)}
+.key.picked{background:var(--amber);color:var(--on-accent);box-shadow:none}
 .rounds-row{display:flex;gap:.5rem;margin-bottom:1.4rem;align-items:center}
 .rounds-row .lbl{font-family:'IBM Plex Mono',monospace;font-size:.55rem;letter-spacing:.3em;color:var(--muted)}
 .rbtn{width:46px;height:40px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1rem;border-radius:8px;cursor:pointer;outline:none}
@@ -366,8 +377,30 @@ html.pre-light #app-splash{background:#f3f2ee}
   <h1 class="title" style="font-size:clamp(2rem,8vw,3.2rem)" id="end-title">Áurea</h1>
   <div class="rk" id="end-rank"></div>
   <div class="btn-row">
+    <button class="btn" id="btn-bonus" style="display:none">Panel final</button>
     <button class="btn" id="btn-rematch">Revancha</button>
     <button class="btn btn-secondary" id="btn-menu">Menú</button>
+  </div>
+</section>
+
+<!-- DUELO FINAL (BONUS) -->
+<section id="screen-bonus" class="screen">
+  <div class="g-head">
+    <div class="g-eyebrow" id="b-eyebrow">PANEL FINAL</div>
+    <div class="g-cat" id="b-cat">Refranes</div>
+  </div>
+  <div class="panel-wrap" id="b-panel"></div>
+  <div class="bonus-timer-wrap"><div class="bonus-disc" id="b-disc"></div><div class="bonus-secs mono" id="b-secs"></div></div>
+  <div class="stage">
+    <div id="b-stage-kb" class="on">
+      <div class="kb-title" id="b-kb-title">ELIGE 3 CONSONANTES Y 1 VOCAL</div>
+      <div class="kb-rows" id="b-kb-rows"></div>
+      <div class="bonus-picks mono" id="b-picks"></div>
+    </div>
+  </div>
+  <div class="g-foot">
+    <div id="b-msg">&nbsp;</div>
+    <button class="btn" id="b-confirm" style="display:none">Resolver</button>
   </div>
 </section>
 
@@ -379,12 +412,13 @@ html.pre-light #app-splash{background:#f3f2ee}
     <p><b>Vocal</b>: compra una por 250 €. Si no está en el panel, pierdes el turno.</p>
     <p><b>Resuelve</b> cuando creas saber la frase: rellena las letras ocultas una a una. Un fallo y pierdes el turno.</p>
     <p><b>Reloj</b>: tienes 30 segundos por decisión (el anillo sobre tu nombre se tiñe de rojo). Cada letra puesta, compra o intento de resolución lo reinicia. Si se agota, pierdes el turno.</p>
+    <p><b>Panel final</b>: si ganas la partida, juegas un panel especial. Te regalan R, S, T, L, N y E; eliges 3 consonantes y 1 vocal más, y tienes 10 segundos para resolver y llevarte el premio.</p>
     <p>Cuidado con la <b>Quiebra</b>: pierdes todo el dinero de la ronda. Casillas especiales: <b>×2</b> duplica tu dinero de ronda y sigues jugando; <b>Vocal gratis</b> te regala una vocal sin coste. Quien resuelve el panel se lleva su dinero a la <b>banca</b>. Tres rondas; gana la banca más alta.</p>
     <button class="btn" id="tut-close">Entendido</button>
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.12.1</div>
+<div class="ver" id="ver">ÁUREA · V0.13</div>
 
 <script>
 'use strict';
@@ -1196,6 +1230,25 @@ const Snd=(()=>{
     buzz(){tone(140,.4,'sawtooth',.12);},
     quiebra(){tone(220,.3,'sawtooth',.12);tone(155,.4,'sawtooth',.12,.18);tone(98,.6,'sawtooth',.13,.38);},
     win(){[523,659,784,1047].forEach((f,i)=>tone(f,.4,'triangle',.12,i*.12));},
+    applause(){
+      if(muted)return;
+      const c=ac();const t=c.currentTime;
+      // ráfaga de ruido con envolvente = aplauso; dos capas para densidad
+      for(let layer=0;layer<2;layer++){
+        const dur=1.4;
+        const buf=c.createBuffer(1,Math.floor(c.sampleRate*dur),c.sampleRate);
+        const d=buf.getChannelData(0);
+        for(let i=0;i<d.length;i++){
+          const env=Math.min(1,i/(c.sampleRate*.08))*Math.pow(1-i/d.length,1.4);
+          d[i]=(Math.random()*2-1)*env*(Math.random()<.15?1:.4);
+        }
+        const src=c.createBufferSource();src.buffer=buf;
+        const bp=c.createBiquadFilter();bp.type='bandpass';bp.frequency.value=1600+layer*900;bp.Q.value=.7;
+        const g=c.createGain();g.gain.value=.14;
+        src.connect(bp).connect(g).connect(c.destination);
+        src.start(t+layer*.04);
+      }
+    },
     key(){tone(700,.04,'square',.05);},
     warn(u){ // u: urgencia 0..1 (sube el tono en los últimos avisos)
       if(muted)return;
@@ -1277,7 +1330,7 @@ const S={
   round:0,rounds:3,turn:0,phase:'menu',
   cat:'',txt:'',rows:[],revealed:new Set(),used:new Set(),
   pend:0,solveIdx:0,solveList:[],solveTyped:0,
-  wheelRot:0,cpuAbort:false,panelsUsed:[],gen:0,first:0,
+  wheelRot:0,cpuAbort:false,panelsUsed:[],gen:0,first:0,bonusDone:false,
 };
 
 /* ================= TEMA / CONTROLES ================= */
@@ -1633,7 +1686,7 @@ function pickPanels(extraExclude,count){
 }
 function newGame(){
   S.players.forEach(p=>{p.m=0;p.b=0;});
-  S.round=0;S.panelsUsed=pickPanels();S.cpuAbort=false;
+  S.round=0;S.panelsUsed=pickPanels();S.cpuAbort=false;S.bonusDone=false;
   show('screen-game');
   startRound();
 }
@@ -1704,7 +1757,7 @@ $('kb-cancel').addEventListener('click',()=>{
 async function resolveWedge(w,pi){
   const p=S.players[pi];
   if(w.v===-1){ // quiebra
-    Snd.quiebra();
+    Snd.quiebra();vibrate(180);
     p.m=0;bumpChip(pi);
     msg(`¡QUIEBRA! ${p.n===`TÚ`?'Pierdes':p.n+' pierde'} todo el dinero de la ronda.`,'bad');
     await sleep(1600);
@@ -1777,7 +1830,7 @@ async function guessCons(L,pi){
   msg(`${n} × ${L} — ${p.n===`TÚ`?'ganas':p.n+' gana'} ${fmt(gan)}.`,'hot');
   const t=revealLetter(L);
   await sleep(t+150);
-  Snd.coin();bumpChip(pi);
+  Snd.coin();bumpChip(pi);vibrate(35);
   if(checkComplete(pi))return n;
   if(!p.cpu){S.phase='idle';setActions(true);timerReset(pi);}
   else S.phase='cpu';
@@ -1957,7 +2010,7 @@ function winRound(pi){
   const ganancia=Math.max(p.m,BANCA_MINIMA);
   p.b+=ganancia;
   S.players.forEach(x=>x.m=0);
-  Snd.win();
+  Snd.win();vibrate([30,50,90]);coinShower();
   $('rv-eyebrow').textContent=`RONDA ${S.round+1} RESUELTA`;
   $('rv-phrase').textContent=S.txt;
   $('rv-win').innerHTML=`Resuelve <b>${p.n}</b>`;
@@ -1985,8 +2038,13 @@ function endGame(){
     r.innerHTML=`<span class="rk-pos">${i+1}</span><span class="rk-nm">${p.n.charAt(0)+p.n.slice(1).toLowerCase()}</span><span class="rk-m">${fmt(p.b)}</span>`;
     rk.appendChild(r);
   });
+  // panel final: solo si gana el jugador humano y no lo ha jugado ya
+  const humanWins=!win.cpu&&!S.bonusDone;
+  $('btn-bonus').style.display=humanWins?'':'none';
+  Snd.applause();
   show('screen-end');
 }
+$('btn-bonus').addEventListener('click',()=>startBonus(false,null));
 $('btn-rematch').addEventListener('click',newGame);
 $('btn-menu').addEventListener('click',()=>{
   if(ON.active)leaveOnline();
@@ -2001,6 +2059,228 @@ $('btn-solo').addEventListener('click',()=>{
   ];
   newGame();
 });
+
+/* ================= DUELO FINAL (BONUS) ================= */
+const BONUS_FREE='RSTLNE', BONUS_PRIZE=2500, BONUS_SECS=10;
+const B={txt:'',rows:[],revealed:null,picksC:[],pickV:null,phase:'pick',raf:null,t0:0,solveList:[],solveIdx:0,winnerPid:null,online:false};
+function pickBonusPanel(){
+  const idx=pickPanels(1)[0];
+  return PANELES[idx];
+}
+function buildBonusKB(){
+  const box=$('b-kb-rows');box.innerHTML='';
+  ['QWERTYUIOP','ASDFGHJKLÑ','ZXCVBNM'].forEach(row=>{
+    const r=document.createElement('div');r.className='kb-row';
+    [...row].forEach(L=>{
+      const k=document.createElement('button');
+      k.className='key'+(VOCALES.includes(L)?' vowel':'');
+      k.textContent=L;k.dataset.l=L;
+      k.addEventListener('click',()=>bonusPick(L));
+      r.appendChild(k);
+    });
+    box.appendChild(r);
+  });
+}
+function renderBonusPicks(){
+  const box=$('b-picks');box.innerHTML='';
+  for(let i=0;i<3;i++){
+    const d=document.createElement('div');
+    const L=B.picksC[i];
+    d.className='pk'+(L?'':' empty');d.textContent=L||'·';
+    box.appendChild(d);
+  }
+  const v=document.createElement('div');
+  v.className='pk'+(B.pickV?' vowel':' empty');v.textContent=B.pickV||'·';
+  box.appendChild(v);
+}
+function updateBonusKeys(){
+  document.querySelectorAll('#b-kb-rows .key').forEach(k=>{
+    const L=k.dataset.l, isV=VOCALES.includes(L), free=BONUS_FREE.includes(L);
+    const picked=(isV?B.pickV===L:B.picksC.includes(L));
+    k.classList.toggle('picked',picked);
+    if(free){k.disabled=true;k.classList.remove('picked');}
+    else if(isV)k.disabled=(B.pickV&&B.pickV!==L);
+    else k.disabled=(B.picksC.length>=3&&!picked);
+  });
+}
+function bonusPick(L){
+  if(B.phase!=='pick')return;
+  Snd.key();
+  const isV=VOCALES.includes(L);
+  if(BONUS_FREE.includes(L))return;
+  if(isV){B.pickV=(B.pickV===L)?null:L;}
+  else{
+    const i=B.picksC.indexOf(L);
+    if(i>=0)B.picksC.splice(i,1);
+    else if(B.picksC.length<3)B.picksC.push(L);
+  }
+  renderBonusPicks();updateBonusKeys();
+  const ready=B.picksC.length===3&&B.pickV;
+  $('b-confirm').style.display=ready?'':'none';
+  $('b-confirm').textContent='Colocar letras';
+}
+function startBonus(online,winnerPid){
+  B.online=online;B.winnerPid=winnerPid;
+  S.bonusDone=true;
+  const [cat,txt]=pickBonusPanel();
+  B.txt=txt;B.rows=wrapPanel(txt);
+  B.revealed=new Set([...BONUS_FREE].filter(ch=>txt.includes(ch)));
+  B.picksC=[];B.pickV=null;B.phase='pick';
+  $('b-cat').textContent=cat.charAt(0)+cat.slice(1).toLowerCase();
+  $('b-kb-title').textContent='ELIGE 3 CONSONANTES Y 1 VOCAL';
+  $('b-secs').textContent='';$('b-disc').style.background='var(--amber)';
+  $('b-confirm').style.display='none';
+  $('b-msg').textContent='RSTLNE ya están puestas. Elige 3 consonantes y 1 vocal.';
+  renderBonusPanelCells();buildBonusKB();renderBonusPicks();updateBonusKeys();
+  show('screen-bonus');
+}
+function renderBonusPanelCells(){
+  const wrap=$('b-panel');wrap.innerHTML='';
+  B.rows.forEach((row,ri)=>{
+    const rEl=document.createElement('div');rEl.className='prow';
+    [...row].forEach((ch,ci)=>{
+      const cell=document.createElement('div');
+      if(ch===' '){cell.className='cell';cell.style.visibility='hidden';}
+      else{
+        cell.className='cell';cell.dataset.ch=ch;cell.dataset.pos=ri+'-'+ci;
+        const hid=document.createElement('div');hid.className='face f-hid';
+        const rev=document.createElement('div');rev.className='face f-rev';rev.textContent=ch;
+        cell.appendChild(hid);cell.appendChild(rev);
+        if(!esLetra(ch)){cell.classList.add('punct','rev');}
+        else if(B.revealed.has(ch))cell.classList.add('rev');
+      }
+      rEl.appendChild(cell);
+    });
+    wrap.appendChild(rEl);
+  });
+}
+$('b-confirm').addEventListener('click',()=>{
+  if(B.phase==='pick')placeBonusLetters();
+  else if(B.phase==='solveReady')beginBonusSolve();
+});
+async function placeBonusLetters(){
+  B.phase='placing';
+  $('b-confirm').style.display='none';
+  $('b-kb-title').textContent='';
+  const chosen=[...B.picksC,B.pickV];
+  for(const L of chosen){
+    if(B.txt.includes(L)){
+      B.revealed.add(L);
+      const cells=[...document.querySelectorAll(`#b-panel .cell[data-ch="${L}"]`)];
+      cells.forEach((c,i)=>setTimeout(()=>{c.classList.add('rev','flash');Snd.ding();},i*220));
+      await sleep(cells.length*220+300);
+    }else{
+      $('b-msg').textContent=`No hay ${L}.`;
+      await sleep(500);
+    }
+  }
+  // ¿queda algo por resolver?
+  const faltan=[...B.txt].some(ch=>esLetra(ch)&&!B.revealed.has(ch));
+  if(!faltan){bonusWin();return;}
+  B.phase='solveReady';
+  $('b-msg').textContent='Ahora resuelve. Tienes 10 segundos.';
+  $('b-confirm').textContent='Empezar';$('b-confirm').style.display='';
+}
+function beginBonusSolve(){
+  B.phase='solve';$('b-confirm').style.display='none';
+  B.solveList=[...document.querySelectorAll('#b-panel .cell[data-ch]')]
+    .filter(c=>esLetra(c.dataset.ch)&&!c.classList.contains('rev'));
+  B.solveIdx=0;
+  if(B.solveList.length)B.solveList[0].classList.add('cursor');
+  $('b-kb-title').textContent='RESUELVE LETRA A LETRA';
+  document.querySelectorAll('#b-kb-rows .key').forEach(k=>{k.disabled=false;k.classList.remove('picked');});
+  document.querySelectorAll('#b-kb-rows .key').forEach(k=>{
+    k.onclick=()=>bonusSolveKey(k.dataset.l);
+  });
+  B.t0=performance.now();bonusTimerLoop();
+}
+function bonusTimerLoop(){
+  if(B.phase!=='solve')return;
+  const p=Math.min(1,(performance.now()-B.t0)/(BONUS_SECS*1000));
+  const left=Math.ceil(BONUS_SECS-(performance.now()-B.t0)/1000);
+  $('b-disc').style.background=`conic-gradient(var(--bad) ${(p*360).toFixed(1)}deg, var(--amber) 0deg)`;
+  $('b-secs').textContent=Math.max(0,left)+'s';
+  const beep=Math.ceil((BONUS_SECS*1000-(performance.now()-B.t0))/1000);
+  if(beep<=5&&beep>=1&&beep!==B._lastBeep){B._lastBeep=beep;Snd.warn((5-beep)/4);}
+  if(p>=1){bonusLose();return;}
+  B.raf=requestAnimationFrame(bonusTimerLoop);
+}
+function bonusSolveKey(L){
+  if(B.phase!=='solve')return;
+  Snd.key();
+  const cell=B.solveList[B.solveIdx];
+  if(!cell)return;
+  if(cell.dataset.ch===L){
+    cell.classList.remove('cursor');cell.classList.add('rev');Snd.ding();
+    B.solveIdx++;
+    if(B.solveIdx>=B.solveList.length){bonusWin();}
+    else B.solveList[B.solveIdx].classList.add('cursor');
+  }else{
+    Snd.buzz();vibrate(70);
+    $('b-panel').classList.add('shake');
+    setTimeout(()=>$('b-panel').classList.remove('shake'),400);
+  }
+}
+function stopBonusTimer(){if(B.raf){cancelAnimationFrame(B.raf);B.raf=null;}}
+function bonusWin(){
+  B.phase='done';stopBonusTimer();
+  for(const ch of B.txt)if(esLetra(ch)){B.revealed.add(ch);}
+  document.querySelectorAll('#b-panel .cell[data-ch]').forEach(c=>c.classList.add('rev'));
+  $('b-secs').textContent='';
+  $('b-msg').textContent=`¡Resuelto! +${fmt(BONUS_PRIZE)}`;
+  Snd.win();Snd.applause();vibrate([40,60,120]);
+  coinShower();
+  if(B.online&&ON.active&&B.winnerPid===ON.myId){
+    const newB=((ON.data.bank&&ON.data.bank[ON.myId])||0)+BONUS_PRIZE;
+    const seq=bumpSeq();
+    fbUpd(roomPath(),{seq,['bank/'+ON.myId]:newB,bonusWon:1,last:{seq,type:'bonuswin',pid:ON.myId}});
+  }else{
+    const w=S.players.find(p=>!p.cpu);if(w)w.b+=BONUS_PRIZE;
+  }
+  setTimeout(()=>{$('b-confirm').textContent='Ver resultado';$('b-confirm').style.display='';
+    $('b-confirm').onclick=()=>{B.phase='pick';show(B.online?'screen-end':'screen-end');refreshEndAfterBonus();};},1600);
+}
+function bonusLose(){
+  B.phase='done';stopBonusTimer();
+  $('b-secs').textContent='0s';
+  $('b-msg').textContent='Se acabó el tiempo. La frase era…';
+  document.querySelectorAll('#b-panel .cell[data-ch]').forEach(c=>c.classList.add('rev'));
+  vibrate(200);
+  setTimeout(()=>{$('b-confirm').textContent='Ver resultado';$('b-confirm').style.display='';
+    $('b-confirm').onclick=()=>{B.phase='pick';show('screen-end');refreshEndAfterBonus();};},1600);
+}
+function refreshEndAfterBonus(){
+  $('btn-bonus').style.display='none';
+  if(!B.online){
+    const order=[...S.players].sort((a,b)=>b.b-a.b);
+    const rk=$('end-rank');rk.innerHTML='';
+    order.forEach((p,i)=>{
+      const r=document.createElement('div');
+      r.className='rk-row'+(i===0?' win':'');
+      r.innerHTML=`<span class="rk-pos">${i+1}</span><span class="rk-nm">${p.n.charAt(0)+p.n.slice(1).toLowerCase()}</span><span class="rk-m">${fmt(p.b)}</span>`;
+      rk.appendChild(r);
+    });
+  }
+}
+
+/* ================= HÁPTICA + MONEDAS ================= */
+function vibrate(pat){try{if(navigator.vibrate)navigator.vibrate(pat);}catch(e){}}
+function coinShower(){
+  const layer=document.createElement('div');
+  layer.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:700;overflow:hidden';
+  document.body.appendChild(layer);
+  for(let i=0;i<18;i++){
+    const c=document.createElement('div');
+    const x=10+Math.random()*80;
+    c.style.cssText=`position:absolute;top:-30px;left:${x}vw;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f6e3a1,#d9ab1e 60%,#8a6a10);box-shadow:0 1px 3px rgba(0,0,0,.4);border:1px solid #6e5107`;
+    layer.appendChild(c);
+    const dur=900+Math.random()*700, delay=Math.random()*500;
+    c.animate([{transform:'translateY(0) rotate(0)',opacity:1},
+      {transform:`translateY(${window.innerHeight+60}px) rotate(${360+Math.random()*360}deg)`,opacity:.9}],
+      {duration:dur,delay,easing:'cubic-bezier(.4,.1,.6,1)',fill:'forwards'});
+  }
+  setTimeout(()=>layer.remove(),2200);
+}
 
 /* ================= ONLINE (Firebase REST + polling, patrón Cábala) ================= */
 const DB_URL='https://subasta-de-tiempo-default-rtdb.europe-west1.firebasedatabase.app';
@@ -2145,6 +2425,7 @@ $('btn-start').addEventListener('click',async()=>{
   Object.values(pl).forEach(p=>{(p.hist||[]).forEach(t=>extra.push(t));});
   const R=(ON.data.rounds===5||ON.data.rounds===7)?ON.data.rounds:3;
   const first=Math.floor(Math.random()*order.length);
+  S.bonusDone=false;
   const seq=bumpSeq();
   await fbUpd(roomPath(),{
     state:'play',order,rounds:R,first,panels:pickPanels(extra,R),round:0,turn:first,
@@ -2337,6 +2618,12 @@ function showOnlineEnd(){
     rk.appendChild(r);
   });
   $('btn-rematch').style.display='none';
+  // panel final: solo el ganador online, y solo una vez
+  const winnerPid=d.order.slice().sort((a,b)=>((d.bank&&d.bank[b])||0)-((d.bank&&d.bank[a])||0))[0];
+  const ofrecer=winnerPid===ON.myId&&!d.bonusWon&&!S.bonusDone;
+  $('btn-bonus').style.display=ofrecer?'':'none';
+  $('btn-bonus').onclick=()=>startBonus(true,ON.myId);
+  Snd.applause();
   show('screen-end');
 }
 
@@ -2353,7 +2640,7 @@ async function onlineSpin(){
   await fbUpd(roomPath(),{seq,last:{seq,type:'spin',pid:ON.myId,rot:rotMod,turns}});
   await spinWheelTo(rotMod,turns);
   if(wedge.v===-1){
-    Snd.quiebra();msg('¡QUIEBRA! Pierdes el dinero de la ronda.','bad');
+    Snd.quiebra();vibrate(180);msg('¡QUIEBRA! Pierdes el dinero de la ronda.','bad');
     const s2=ON.seq+1;ON.seq=s2;
     await fbUpd(roomPath(),{seq:s2,['money/'+ON.myId]:0,turn:nextIdx(),last:{seq:s2,type:'quiebra',pid:ON.myId}});
     await sleep(1300);S.phase='sync';ON.busy=false;
@@ -2412,7 +2699,7 @@ async function onlineCons(L){
   await fbUpd(roomPath(),{seq,used,revealed:[...S.revealed].join(''),
     ['money/'+ON.myId]:newM,last:{seq,type:'cons',pid:ON.myId,l:L,n,gain:gan}});
   const t=revealLetter(L);await sleep(t+150);Snd.coin();
-  S.players[idx].m=newM;bumpChip(idx);
+  S.players[idx].m=newM;bumpChip(idx);vibrate(35);
   if(lettersLeft().size===0){await onlineWinRound();ON.busy=false;return;}
   S.phase='idle';ON.busy=false;setActions(true);timerReset(ON.data.turn);
 }
