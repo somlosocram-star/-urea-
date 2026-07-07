@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.17.2</title>
+<title>Áurea · v0.18.1</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -366,6 +366,7 @@ html.pre-light #app-splash{background:#f3f2ee}
     <button class="rbtn" data-r="7">7</button>
   </div>
   <div class="lobby-players" id="lobby-players"></div>
+  <div class="join-error" id="lobby-vwarn" style="display:none">⚠ hay móviles con otra versión de áurea: actualizad todos antes de empezar</div>
   <div class="guest-waiting" id="lobby-wait" style="display:none">esperando al anfitrión…</div>
   <div class="btn-row">
     <button class="btn" id="btn-start" style="display:none">Empezar</button>
@@ -435,7 +436,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.17.2</div>
+<div class="ver" id="ver">ÁUREA · V0.18.1</div>
 
 <script>
 'use strict';
@@ -2054,19 +2055,28 @@ function winRound(pi){
   p.b+=ganancia;
   S.players.forEach(x=>x.m=0);
   Snd.win();vibrate([30,50,90]);coinShower();
+  const fin=S.round+1>=S.rounds;
   $('rv-eyebrow').textContent=`RONDA ${S.round+1} RESUELTA`;
   $('rv-phrase').textContent=S.txt;
   $('rv-win').innerHTML=`Resuelve <b>${p.n}</b>`;
   $('rv-bank').textContent=`+ ${fmt(ganancia)} a la banca`;
-  $('rv-next').textContent=(S.round+1>=S.rounds)?'Ver resultado':'Siguiente ronda';
-  setTimeout(()=>$('round-veil').classList.add('visible'),900);
+  if(fin){
+    $('rv-next').style.display='none';
+    $('rv-wait').textContent='panel final…';$('rv-wait').style.display='';
+    setTimeout(()=>$('round-veil').classList.add('visible'),900);
+    setTimeout(()=>{$('round-veil').classList.remove('visible');S.round++;endGame();},3400);
+  }else{
+    $('rv-next').textContent='Siguiente ronda';$('rv-next').style.display='';
+    $('rv-wait').style.display='none';
+    setTimeout(()=>$('round-veil').classList.add('visible'),900);
+  }
 }
 $('rv-next').addEventListener('click',()=>{
   if(ON.active){onlineNextRound();return;}
   $('round-veil').classList.remove('visible');
   S.cpuAbort=false;
   S.round++;
-  if(S.round>=S.rounds)endGame();
+  if(S.round>=S.rounds)endGame();  // salvaguarda; en la última ronda ya salta solo
   else startRound();
 });
 function endGame(){
@@ -2450,13 +2460,14 @@ function renderStandings(){
 }
 
 /* ================= ONLINE (Firebase REST + polling, patrón Cábala) ================= */
+const APP_V='0.18'; // versión de protocolo: debe coincidir en todos los móviles de la sala
 const DB_URL='https://subasta-de-tiempo-default-rtdb.europe-west1.firebasedatabase.app';
 const BASE='g/aurea/rooms';
 const SV={'.sv':'timestamp'};
 const HB_MS=2000,HB_TIMEOUT=6000,POLL_MS=400,MAX_JUG=4;
 
 const ON={active:false,code:null,data:null,stage:null,round:-1,seq:0,busy:false,
-  poll:null,pollLast:null,hb:null,chain:Promise.resolve(),turnPainted:-2,myId:''};
+  poll:null,pollLast:null,hb:null,chain:Promise.resolve(),turnPainted:-2,myId:'',_autoNext:false};
 try{ON.myId=localStorage.getItem('aurea_id')||'';}catch(e){}
 if(!ON.myId){ON.myId='p'+Math.random().toString(36).slice(2,10);try{localStorage.setItem('aurea_id',ON.myId);}catch(e){}}
 
@@ -2533,8 +2544,8 @@ $('btn-create').addEventListener('click',async()=>{
   ON.code=code;ON.active=true;
   try{localStorage.setItem('aurea_room',code);}catch(e){}
   await fbSet(roomPath(),{
-    code,createdAt:SV,state:'lobby',v:1,seq:0,rounds:3,
-    players:{[ON.myId]:{name:myName,joinedAt:SV,lastSeen:Date.now(),hist:getHist().slice(-90)}}
+    code,createdAt:SV,state:'lobby',v:1,appV:APP_V,seq:0,rounds:3,
+    players:{[ON.myId]:{name:myName,joinedAt:SV,lastSeen:Date.now(),v:APP_V,hist:getHist().slice(-90)}}
   });
   show('screen-lobby');$('room-code').textContent=code;
   startPoll();startHB();
@@ -2547,9 +2558,10 @@ $('btn-join').addEventListener('click',async()=>{
   if(!data){$('join-error').textContent='no existe esa sala';return;}
   if(data.state!=='lobby'){$('join-error').textContent='la partida ya ha empezado';return;}
   if(Object.keys(data.players||{}).length>=MAX_JUG){$('join-error').textContent='la sala está llena (4)';return;}
+  if(!data.appV||data.appV!==APP_V){$('join-error').textContent='versión distinta: actualizad áurea en ambos móviles';return;}
   ON.code=code;ON.active=true;
   try{localStorage.setItem('aurea_room',code);}catch(e){}
-  await fbSet(roomPath()+'/players/'+ON.myId,{name:myName,joinedAt:SV,lastSeen:Date.now(),hist:getHist().slice(-90)});
+  await fbSet(roomPath()+'/players/'+ON.myId,{name:myName,joinedAt:SV,lastSeen:Date.now(),v:APP_V,hist:getHist().slice(-90)});
   show('screen-lobby');$('room-code').textContent=code;
   startPoll();startHB();
 });
@@ -2577,7 +2589,10 @@ function renderLobby(){
     b.classList.toggle('on',Number(b.dataset.r)===rsel);
     b.disabled=!soyHost();
   });
-  const puedo=soyHost()&&ids.filter(id=>isConn(pl[id])).length>=2;
+  const desfasados=ids.filter(id=>pl[id].v!==APP_V);
+  const vOk=desfasados.length===0;
+  $('lobby-vwarn').style.display=vOk?'none':'';
+  const puedo=soyHost()&&vOk&&ids.filter(id=>isConn(pl[id])).length>=2;
   $('btn-start').style.display=puedo?'':'none';
   $('lobby-wait').style.display=soyHost()?'none':'';
 }
@@ -2827,15 +2842,29 @@ function showOnlineRoundEnd(){
   document.querySelectorAll('.cell[data-ch]').forEach(c=>c.classList.add('rev'));
   syncPlayersFromData();renderChips();
   const win=d.roundWin||{};
+  const fin=d.round+1>=(d.rounds||3);
   $('rv-eyebrow').textContent=`RONDA ${d.round+1} RESUELTA`;
   $('rv-phrase').textContent=S.txt;
   $('rv-win').innerHTML=`Resuelve <b>${escapeHtml(pname(win.pid))}</b>`;
   $('rv-bank').textContent=`+ ${fmt(win.amount||0)} a la banca`;
-  const fin=d.round+1>=(d.rounds||3);
-  $('rv-next').textContent=fin?'Ver resultado':'Siguiente ronda';
-  $('rv-next').style.display=soyHost()?'':'none';
-  $('rv-wait').style.display=soyHost()?'none':'';
-  $('round-veil').classList.add('visible');
+  if(fin){
+    // última ronda: no hay botón; se muestra el resultado y salta solo al panel final
+    $('rv-next').style.display='none';
+    $('rv-wait').textContent='panel final…';
+    $('rv-wait').style.display='';
+    $('round-veil').classList.add('visible');
+    // el anfitrión dispara la transición tras una pausa para leer la frase
+    if(soyHost()&&!ON._autoNext){
+      ON._autoNext=true;
+      setTimeout(()=>{ON._autoNext=false;onlineNextRound();},2600);
+    }
+  }else{
+    $('rv-next').textContent='Siguiente ronda';
+    $('rv-next').style.display=soyHost()?'':'none';
+    $('rv-wait').textContent='esperando al anfitrión…';
+    $('rv-wait').style.display=soyHost()?'none':'';
+    $('round-veil').classList.add('visible');
+  }
 }
 async function onlineNextRound(){
   const d=ON.data;if(!soyHost()||d.state!=='roundend')return;
@@ -2849,9 +2878,10 @@ async function onlineNextRound(){
         bonus:{cat,txt,winner:winnerPid,phase:'pick',revealed:BONUS_FREE.split('').filter(ch=>txt.includes(ch)).join(''),result:''},
         last:{seq,type:'bonusstart',pid:winnerPid}});
     }catch(e){
-      // reportar el motivo real antes de degradar al resultado
+      // reportar el motivo real; si el bonus no puede prepararse, cerrar con resultado
       try{const m=$('msg');if(m){m.textContent='⚠ bonus: '+((e&&e.message)||e);m.className='bad';}}catch(_){}
-      await fbUpd(roomPath(),{state:'end',seq,last:{seq,type:'toend',err:String((e&&e.message)||e).slice(0,80)}});
+      const s2=bumpSeq();
+      await fbUpd(roomPath(),{state:'end',seq:s2,last:{seq:s2,type:'toend'}});
     }
   }else{
     const upd={state:'play',round:d.round+1,turn:((d.first||0)+d.round+1)%d.order.length,
