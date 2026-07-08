@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.18.3</title>
+<title>Áurea · v0.18.4</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -435,7 +435,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.18.3</div>
+<div class="ver" id="ver">ÁUREA · V0.18.4</div>
 
 <script>
 'use strict';
@@ -2465,6 +2465,7 @@ function renderStandings(){
 
 /* ================= ONLINE (Firebase REST + polling, patrón Cábala) ================= */
 const PROTO_V=1; // protocolo de red: solo se incrementa si cambia el formato de la sala (no en cada release)
+const CODE_BUILD='v0.18.4-b'; // sello de compilación visible: debe coincidir en ambos móviles
 const DB_URL='https://subasta-de-tiempo-default-rtdb.europe-west1.firebasedatabase.app';
 const BASE='g/aurea/rooms';
 const SV={'.sv':'timestamp'};
@@ -2614,7 +2615,7 @@ $('btn-start').addEventListener('click',async()=>{
   S.bonusDone=false;S.statsLogged=false;
   const seq=bumpSeq();
   await fbUpd(roomPath(),{
-    state:'play',order,rounds:R,first,panels:pickPanels(extra,R),round:0,turn:first,
+    state:'play',order,rounds:R,first,build:CODE_BUILD,panels:pickPanels(extra,R),round:0,turn:first,
     money,bank,revealed:'',used:'',seq,last:{seq,type:'start',first}
   });
 });
@@ -2921,6 +2922,15 @@ function showOnlineEnd(){
   }
   recordOnlineStats();
   renderStandings();
+  // sello de diagnóstico: build con el que se creó la sala vs. el de este móvil
+  const salaB=(d.build||'?'), miB=CODE_BUILD;
+  const dbg=$('end-standings');
+  if(dbg&&salaB!==miB){
+    const w=document.createElement('div');
+    w.style.cssText='margin-top:.8rem;font-family:IBM Plex Mono,monospace;font-size:.55rem;color:var(--bad);text-align:center';
+    w.textContent='⚠ sala '+salaB+' · este móvil '+miB+' — actualizad el desfasado';
+    dbg.appendChild(w);
+  }
   Snd.applause();
   show('screen-end');
 }
