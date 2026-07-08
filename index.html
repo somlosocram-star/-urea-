@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.18.2</title>
+<title>Áurea · v0.18.3</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -435,7 +435,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.18.2</div>
+<div class="ver" id="ver">ÁUREA · V0.18.3</div>
 
 <script>
 'use strict';
@@ -1826,9 +1826,10 @@ async function resolveWedge(w,pi){
     return 'again';
   }
   if(w.v===-2){ // vocal gratis
-    if(![...VOCALES].some(v=>!S.used.has(v))){
-      msg('Vocal gratis… pero no quedan vocales. Sigues jugando.','hot');
-      await sleep(1300);
+    const vocalEnPanel=[...lettersLeft()].some(ch=>VOCALES.includes(ch));
+    if(!vocalEnPanel){
+      msg('No quedan vocales en el panel. Tira de nuevo.','hot');
+      await sleep(1500);
       if(!p.cpu){S.phase='idle';setActions(true);timerReset(pi);}
       return 'again';
     }
@@ -2198,8 +2199,12 @@ function startBonus(){
     $('b-stage-kb').style.display='';
     show('screen-bonus');
   }catch(e){
-    // si el bonus falla, no congelar: mostrar el resultado
-    showEndScreen();
+    // reportar el error real en la pantalla de bonus para diagnosticarlo
+    try{
+      show('screen-bonus');
+      const m=$('b-msg');
+      if(m){m.textContent='⚠ '+((e&&e.message)||e)+' @'+((e&&e.stack&&e.stack.split('\n')[1])||'?');m.className='bad';}
+    }catch(_){showEndScreen();}
   }
 }
 // ganador online: juega y publica cada paso
@@ -2745,7 +2750,7 @@ async function animEvent(ev){
     case 'freevoc':
       msg(`${nm} gana una vocal gratis…`,'hot');await sleep(600);break;
     case 'freenone':
-      msg(`Vocal gratis para ${nm}… sin vocales restantes.`);await sleep(900);break;
+      msg(`${nm}: no quedan vocales en el panel, tira de nuevo.`);await sleep(900);break;
     case 'cons':{
       msg(`${ev.n} × ${ev.l} — ${nm} gana ${fmt(ev.gain)}.`,'hot');
       S.revealed.add(ev.l);const t=revealLetter(ev.l);await sleep(t+150);Snd.coin();break;}
@@ -2953,11 +2958,12 @@ async function onlineSpin(){
     await sleep(1400);
     S.phase='idle';ON.busy=false;setActions(true);timerReset(ON.data.turn);
   }else if(wedge.v===-2){ // vocal gratis
-    if(![...VOCALES].some(v=>!S.used.has(v))){
+    const vocalEnPanel=[...lettersLeft()].some(ch=>VOCALES.includes(ch));
+    if(!vocalEnPanel){
       const s2=ON.seq+1;ON.seq=s2;
       await fbUpd(roomPath(),{seq:s2,last:{seq:s2,type:'freenone',pid:ON.myId}});
-      msg('Vocal gratis… pero no quedan vocales. Sigues jugando.','hot');
-      await sleep(1200);
+      msg('No quedan vocales en el panel. Tira de nuevo.','hot');
+      await sleep(1500);
       S.phase='idle';ON.busy=false;setActions(true);timerReset(ON.data.turn);
     }else{
       const s2=ON.seq+1;ON.seq=s2;
