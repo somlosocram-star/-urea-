@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.18.1</title>
+<title>Áurea · v0.18.2</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -366,7 +366,6 @@ html.pre-light #app-splash{background:#f3f2ee}
     <button class="rbtn" data-r="7">7</button>
   </div>
   <div class="lobby-players" id="lobby-players"></div>
-  <div class="join-error" id="lobby-vwarn" style="display:none">⚠ hay móviles con otra versión de áurea: actualizad todos antes de empezar</div>
   <div class="guest-waiting" id="lobby-wait" style="display:none">esperando al anfitrión…</div>
   <div class="btn-row">
     <button class="btn" id="btn-start" style="display:none">Empezar</button>
@@ -436,7 +435,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.18.1</div>
+<div class="ver" id="ver">ÁUREA · V0.18.2</div>
 
 <script>
 'use strict';
@@ -2460,7 +2459,7 @@ function renderStandings(){
 }
 
 /* ================= ONLINE (Firebase REST + polling, patrón Cábala) ================= */
-const APP_V='0.18'; // versión de protocolo: debe coincidir en todos los móviles de la sala
+const PROTO_V=1; // protocolo de red: solo se incrementa si cambia el formato de la sala (no en cada release)
 const DB_URL='https://subasta-de-tiempo-default-rtdb.europe-west1.firebasedatabase.app';
 const BASE='g/aurea/rooms';
 const SV={'.sv':'timestamp'};
@@ -2544,8 +2543,8 @@ $('btn-create').addEventListener('click',async()=>{
   ON.code=code;ON.active=true;
   try{localStorage.setItem('aurea_room',code);}catch(e){}
   await fbSet(roomPath(),{
-    code,createdAt:SV,state:'lobby',v:1,appV:APP_V,seq:0,rounds:3,
-    players:{[ON.myId]:{name:myName,joinedAt:SV,lastSeen:Date.now(),v:APP_V,hist:getHist().slice(-90)}}
+    code,createdAt:SV,state:'lobby',v:1,proto:PROTO_V,seq:0,rounds:3,
+    players:{[ON.myId]:{name:myName,joinedAt:SV,lastSeen:Date.now(),hist:getHist().slice(-90)}}
   });
   show('screen-lobby');$('room-code').textContent=code;
   startPoll();startHB();
@@ -2558,10 +2557,10 @@ $('btn-join').addEventListener('click',async()=>{
   if(!data){$('join-error').textContent='no existe esa sala';return;}
   if(data.state!=='lobby'){$('join-error').textContent='la partida ya ha empezado';return;}
   if(Object.keys(data.players||{}).length>=MAX_JUG){$('join-error').textContent='la sala está llena (4)';return;}
-  if(!data.appV||data.appV!==APP_V){$('join-error').textContent='versión distinta: actualizad áurea en ambos móviles';return;}
+  if(data.proto&&data.proto!==PROTO_V){$('join-error').textContent='versión incompatible: actualizad áurea en ambos móviles';return;}
   ON.code=code;ON.active=true;
   try{localStorage.setItem('aurea_room',code);}catch(e){}
-  await fbSet(roomPath()+'/players/'+ON.myId,{name:myName,joinedAt:SV,lastSeen:Date.now(),v:APP_V,hist:getHist().slice(-90)});
+  await fbSet(roomPath()+'/players/'+ON.myId,{name:myName,joinedAt:SV,lastSeen:Date.now(),hist:getHist().slice(-90)});
   show('screen-lobby');$('room-code').textContent=code;
   startPoll();startHB();
 });
@@ -2589,10 +2588,7 @@ function renderLobby(){
     b.classList.toggle('on',Number(b.dataset.r)===rsel);
     b.disabled=!soyHost();
   });
-  const desfasados=ids.filter(id=>pl[id].v!==APP_V);
-  const vOk=desfasados.length===0;
-  $('lobby-vwarn').style.display=vOk?'none':'';
-  const puedo=soyHost()&&vOk&&ids.filter(id=>isConn(pl[id])).length>=2;
+  const puedo=soyHost()&&ids.filter(id=>isConn(pl[id])).length>=2;
   $('btn-start').style.display=puedo?'':'none';
   $('lobby-wait').style.display=soyHost()?'none':'';
 }
@@ -2624,6 +2620,7 @@ async function tryReconnect(){
   if(!code)return;
   const data=await fbGet(BASE+'/'+code);
   if(!data||!data.players||!data.players[ON.myId]){try{localStorage.removeItem('aurea_room');}catch(e){}return;}
+  if(data.proto&&data.proto!==PROTO_V){try{localStorage.removeItem('aurea_room');}catch(e){}return;}
   // la sala existe y seguimos en ella: ofrecer volver
   const btn=$('btn-reconnect');
   btn.style.display='';
