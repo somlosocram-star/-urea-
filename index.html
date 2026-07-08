@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Áurea">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Áurea · v0.18.4</title>
+<title>Áurea · v0.18.5</title>
 <script>
 (function(){try{if(localStorage.getItem('aurea_theme')==='light')document.documentElement.classList.add('pre-light');}catch(e){}})();
 </script>
@@ -435,7 +435,7 @@ html.pre-light #app-splash{background:#f3f2ee}
   </div>
 </div>
 
-<div class="ver" id="ver">ÁUREA · V0.18.4</div>
+<div class="ver" id="ver">ÁUREA · V0.18.5</div>
 
 <script>
 'use strict';
@@ -2465,7 +2465,7 @@ function renderStandings(){
 
 /* ================= ONLINE (Firebase REST + polling, patrón Cábala) ================= */
 const PROTO_V=1; // protocolo de red: solo se incrementa si cambia el formato de la sala (no en cada release)
-const CODE_BUILD='v0.18.4-b'; // sello de compilación visible: debe coincidir en ambos móviles
+const CODE_BUILD='v0.18.5-diag'; // sello de compilación visible: debe coincidir en ambos móviles
 const DB_URL='https://subasta-de-tiempo-default-rtdb.europe-west1.firebasedatabase.app';
 const BASE='g/aurea/rooms';
 const SV={'.sv':'timestamp'};
@@ -2859,7 +2859,13 @@ function showOnlineRoundEnd(){
     // el anfitrión dispara la transición tras una pausa para leer la frase
     if(soyHost()&&!ON._autoNext){
       ON._autoNext=true;
-      setTimeout(()=>{ON._autoNext=false;onlineNextRound();},2600);
+      $('rv-wait').textContent='panel final… (host)';
+      setTimeout(()=>{
+        ON._autoNext=false;
+        if(ON.data&&ON.data.state==='roundend'){onlineNextRound();}
+      },2600);
+    }else if(!soyHost()){
+      $('rv-wait').textContent='esperando el panel final…';
     }
   }else{
     $('rv-next').textContent='Siguiente ronda';
@@ -2870,21 +2876,23 @@ function showOnlineRoundEnd(){
   }
 }
 async function onlineNextRound(){
-  const d=ON.data;if(!soyHost()||d.state!=='roundend')return;
+  const d=ON.data;
+  if(!soyHost()){fbSet(roomPath()+'/dbg','abort: no soy host');return;}
+  if(d.state!=='roundend'){fbSet(roomPath()+'/dbg','abort: estado='+d.state);return;}
   const seq=bumpSeq();
   if(d.round+1>=(d.rounds||3)){
     // fin de rondas: el ganador juega el panel final; todos lo ven
     try{
       const winnerPid=d.order.slice().sort((a,b)=>((d.bank&&d.bank[b])||0)-((d.bank&&d.bank[a])||0))[0];
       const [cat,txt]=pickBonusPanel();
-      await fbUpd(roomPath(),{state:'bonus',seq,
+      await fbUpd(roomPath(),{state:'bonus',seq,dbg:'bonus OK',
         bonus:{cat,txt,winner:winnerPid,phase:'pick',revealed:BONUS_FREE.split('').filter(ch=>txt.includes(ch)).join(''),result:''},
         last:{seq,type:'bonusstart',pid:winnerPid}});
     }catch(e){
-      // reportar el motivo real; si el bonus no puede prepararse, cerrar con resultado
-      try{const m=$('msg');if(m){m.textContent='⚠ bonus: '+((e&&e.message)||e);m.className='bad';}}catch(_){}
+      const emsg='⚠ bonus fail: '+((e&&e.message)||e);
+      try{const m=$('msg');if(m){m.textContent=emsg;m.className='bad';}}catch(_){}
       const s2=bumpSeq();
-      await fbUpd(roomPath(),{state:'end',seq:s2,last:{seq:s2,type:'toend'}});
+      await fbUpd(roomPath(),{state:'end',seq:s2,dbg:emsg,last:{seq:s2,type:'toend'}});
     }
   }else{
     const upd={state:'play',round:d.round+1,turn:((d.first||0)+d.round+1)%d.order.length,
@@ -2925,10 +2933,10 @@ function showOnlineEnd(){
   // sello de diagnóstico: build con el que se creó la sala vs. el de este móvil
   const salaB=(d.build||'?'), miB=CODE_BUILD;
   const dbg=$('end-standings');
-  if(dbg&&salaB!==miB){
+  if(dbg){
     const w=document.createElement('div');
-    w.style.cssText='margin-top:.8rem;font-family:IBM Plex Mono,monospace;font-size:.55rem;color:var(--bad);text-align:center';
-    w.textContent='⚠ sala '+salaB+' · este móvil '+miB+' — actualizad el desfasado';
+    w.style.cssText='margin-top:.8rem;font-family:IBM Plex Mono,monospace;font-size:.5rem;color:var(--muted);text-align:center';
+    w.textContent='diag: '+(d.dbg||'sin traza')+' · sala '+salaB;
     dbg.appendChild(w);
   }
   Snd.applause();
